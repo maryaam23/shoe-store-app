@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-import 'package:hive_flutter/hive_flutter.dart';
+//import 'package:hive_flutter/hive_flutter.dart';
 
 import 'home_page.dart';
 import 'signup_page.dart';
-=======
->>>>>>> 5d5ab4d91698500b7f52cf7da04b323f217bb7e3
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,7 +12,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-<<<<<<< HEAD
   final GlobalKey<FormState> _formKey = GlobalKey();
 
   final FocusNode _focusNodePassword = FocusNode();
@@ -23,12 +19,19 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _controllerPassword = TextEditingController();
 
   bool _obscurePassword = true;
-  final Box _boxLogin = Hive.box("login");
-  final Box _boxAccounts = Hive.box("accounts");
+  //final Box _boxLogin = Hive.box("login");
+  //final Box _boxAccounts = Hive.box("accounts");
+
+  // Fake replacements for testing UI only
+  final Map<String, dynamic> _boxLogin = {};
+  final Map<String, dynamic> _boxAccounts = {
+   "test": "1234", // dummy account
+  };
+
 
   @override
   Widget build(BuildContext context) {
-    if (_boxLogin.get("loginStatus") ?? false) {
+    if (_boxLogin["loginStatus"] ?? false) {
       return HomePage();
     }
 
@@ -104,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
                   if (value == null || value.isEmpty) {
                     return "Please enter password.";
                   } else if (value !=
-                      _boxAccounts.get(_controllerUsername.text)) {
+                      _boxAccounts[_controllerUsername.text]) {
                     return "Wrong password.";
                   }
 
@@ -123,8 +126,8 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     onPressed: () {
                       if (_formKey.currentState?.validate() ?? false) {
-                        _boxLogin.put("loginStatus", true);
-                        _boxLogin.put("userName", _controllerUsername.text);
+                        _boxLogin["loginStatus"] = true;
+                        _boxLogin["userName"] = _controllerUsername.text;
 
                         Navigator.pushReplacement(
                           context,
@@ -176,10 +179,3 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 } 
-=======
-  @override
-  Widget build(BuildContext context) {
-    return Container();
-  }
-}
->>>>>>> 5d5ab4d91698500b7f52cf7da04b323f217bb7e3
