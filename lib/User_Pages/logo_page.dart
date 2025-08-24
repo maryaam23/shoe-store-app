@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'login_page.dart';
 
 class LogoScreen extends StatefulWidget {
   const LogoScreen({super.key});
@@ -16,49 +17,55 @@ class _LogoScreenState extends State<LogoScreen>
   AnimationController? _textController;
   Animation<Offset>? _textAnimation;
 
+  bool _showWelcome = false; // ✅ to control welcome message fade-in
+
   @override
   void initState() {
     super.initState();
 
-    // ✅ Initialize logo animation controller
+    // ✅ Logo animation
     _logoController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     );
 
-    // ✅ Animation curve for logo
     _logoAnimation = CurvedAnimation(
       parent: _logoController!,
       curve: Curves.easeInOutBack,
     );
 
-    // ✅ Initialize text animation controller
+    // ✅ Text animation
     _textController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
     );
 
-    // ✅ Text slides up
     _textAnimation = Tween<Offset>(
-      begin: const Offset(0, 1), // starts below screen
-      end: Offset.zero, // moves to normal position
+      begin: const Offset(0, 1),
+      end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _textController!,
       curve: Curves.easeOut,
     ));
 
-    // ✅ Start animations
+    // ✅ Run animations in sequence
     _logoController!.forward().whenComplete(() {
-      _textController!.forward();
+      _textController!.forward().whenComplete(() {
+        // ✅ Show welcome message after text appears
+        Timer(const Duration(seconds: 1), () {
+          setState(() {
+            _showWelcome = true;
+          });
+        // ✅ Navigate to LoginPage after welcome message fades in
+        Timer(const Duration(seconds: 2), () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
+        });
+      });
     });
-
-    // ✅ Navigate after 4s
-    Timer(const Duration(seconds: 4), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    });
+  });
   }
 
   @override
@@ -76,64 +83,73 @@ class _LogoScreenState extends State<LogoScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo animation with fallback
-            ScaleTransition(
-              scale: _logoAnimation ?? const AlwaysStoppedAnimation(1.0),
-              child: Image.asset(
-                "assets/logo.jpg", // ✅ Make sure this file exists in pubspec.yaml
-                height: 120,
-                width: 120,
-              ),
-            ),
-            const SizedBox(height: 20),
+            // ✅ Logo + English title in one row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Logo animation
+                ScaleTransition(
+                  scale: _logoAnimation ?? const AlwaysStoppedAnimation(1.0),
+                  child: Image.asset(
+                    "assets/logoImage.png",
+                    height: 200,
+                    width: 200,
+                  ),
+                ),
+                const SizedBox(width: 12),
 
-            // App title animation with fallback
-            SlideTransition(
-              position: _textAnimation ??
-                  const AlwaysStoppedAnimation(Offset.zero),
-              child: const Text(
-                "SPORT BRANDS",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+                // English Title
+                SlideTransition(
+                  position:
+                      _textAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
+                  child: const Text(
+                    "SPORT BRANDS",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // ✅ Arabic subtitle more to the right
+            Padding(
+              padding: const EdgeInsets.only(left: 250.0),
+              child: SlideTransition(
+                position:
+                    _textAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
+                child: const Text(
+                  "ماركات عالمية",
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 5),
 
-            // Arabic subtitle animation with fallback
-            SlideTransition(
-              position: _textAnimation ??
-                  const AlwaysStoppedAnimation(Offset.zero),
+            const SizedBox(height: 30),
+
+            // ✅ Welcome message fades in after everything
+            AnimatedOpacity(
+              opacity: _showWelcome ? 1.0 : 0.0,
+              duration: const Duration(seconds: 2),
               child: const Text(
-                "ماركات عالمية",
+                "Welcome to Sport Brands 👟",
                 style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: 16,
+                  color: Colors.white70,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ✅ Dummy home screen to test navigation
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Text(
-          "Welcome to Sport Brands 👟",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
     );
