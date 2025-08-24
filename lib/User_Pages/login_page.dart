@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'home_page.dart';
 import 'signup_page.dart';
-=======
->>>>>>> 5d5ab4d91698500b7f52cf7da04b323f217bb7e3
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,7 +12,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-<<<<<<< HEAD
   final GlobalKey<FormState> _formKey = GlobalKey();
 
   final FocusNode _focusNodePassword = FocusNode();
@@ -176,10 +172,3 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 } 
-=======
-  @override
-  Widget build(BuildContext context) {
-    return Container();
-  }
-}
->>>>>>> 5d5ab4d91698500b7f52cf7da04b323f217bb7e3
