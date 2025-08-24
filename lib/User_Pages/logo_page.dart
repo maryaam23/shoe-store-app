@@ -1,82 +1,107 @@
-import 'dart:async'; // ✅ Import for Timer, used for delaying actions
-import 'package:flutter/material.dart'; // ✅ Flutter framework for UI components
-import 'login_page.dart'; // ✅ Import your login page to navigate after splash screen
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'login_page.dart'; // replace with your login page import
 
-// ✅ StatefulWidget because we have animations and state changes
 class LogoScreen extends StatefulWidget {
-  const LogoScreen({super.key}); // ✅ const constructor for performance
+  const LogoScreen({super.key});
 
   @override
-  State<LogoScreen> createState() => _LogoScreenState(); // ✅ Creates mutable state
+  State<LogoScreen> createState() => _LogoScreenState();
 }
 
-// ✅ State class for LogoScreen
 class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
-  // ✅ TickerProvider needed for animations
-  AnimationController? _logoController; // ✅ Controls logo animation timing
-  Animation<double>?
-  _logoAnimation; // ✅ Defines the type of animation for logo (scale)
+  AnimationController? _logoController;
+  Animation<double>? _logoAnimation;
+  Animation<double>? _logoRotation;
 
-  AnimationController? _textController; // ✅ Controls text animation timing
-  Animation<Offset>? _textAnimation; // ✅ Animation for text movement (slide)
+  AnimationController? _textController;
+  Animation<Offset>? _textAnimation;
 
-  bool _showWelcome = false; // ✅ Controls fade-in of welcome message
+  bool _showWelcome = false;
+
+  // Loader Animation Controllers
+  late List<AnimationController> _bubbleControllers;
+  late List<Animation<double>> _bubbleAnimations;
 
   @override
   void initState() {
-    super.initState(); // ✅ Always call super.initState in StatefulWidget
+    super.initState();
 
-    // ✅ Logo animation controller: duration is 2 seconds
+    // Logo Animation Controller
     _logoController = AnimationController(
-      vsync: this, // ✅ Provides ticker for animation frames
+      vsync: this,
       duration: const Duration(seconds: 2),
     );
 
-    // ✅ Logo animation with easing curve
-    _logoAnimation = CurvedAnimation(
-      parent: _logoController!, // ✅ Connect controller to animation
-      curve: Curves.easeInOutBack, // ✅ Easing effect for smooth scaling
+    // Bounce Scale Animation
+    _logoAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 50),
+    ]).animate(_logoController!);
+
+    // Rotation Animation
+    _logoRotation = Tween<double>(begin: -0.2, end: 0.0).animate(
+      CurvedAnimation(parent: _logoController!, curve: Curves.easeOutBack),
     );
 
-    // ✅ Text animation controller: duration is 1 second
+    // Text Animation Controller
     _textController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
     );
 
-    // ✅ Slide animation: starts off-screen (Offset(0,1)) and moves to center (Offset.zero)
+    // Slide-in Text Animation
     _textAnimation = Tween<Offset>(
-      begin: const Offset(0, 1), // ✅ Offset(x, y) → 1 = 100% of widget height
-      end: Offset.zero, // ✅ Ends at original position
-    ).animate(
-      CurvedAnimation(
-        parent: _textController!, // ✅ Connect controller
-        curve: Curves.easeOut, // ✅ Smooth deceleration
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _textController!, curve: Curves.easeOut));
+
+    // Bubble loader controllers
+    _bubbleControllers = List.generate(
+      3,
+      (index) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1500),
       ),
     );
 
-    // ✅ Run animations in sequence
+    _bubbleAnimations =
+        _bubbleControllers.map((controller) {
+          return Tween<double>(begin: 1.0, end: 2.0).animate(
+            CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+          );
+        }).toList();
+
+    // Run logo and text animations
     _logoController!.forward().whenComplete(() {
-      // ✅ Starts logo animation
       _textController!.forward().whenComplete(() {
-        // ✅ Starts text animation after logo
-        // ✅ Show welcome message after text animation
         Timer(const Duration(seconds: 1), () {
-          // ✅ Delay before showing welcome
           setState(() {
-            _showWelcome = true; // ✅ Trigger AnimatedOpacity
+            _showWelcome = true;
           });
 
-          // ✅ Navigate to LoginPage after welcome message fades in
-          Timer(const Duration(seconds: 2), () {
-            // ✅ Wait 2 sec before navigation
-            Navigator.pushReplacement(
-              context, // ✅ Current context of the widget tree
-              MaterialPageRoute(
-                builder: (context) => const LoginPage(),
-              ), // ✅ Navigate to LoginPage
+          // Start bubble loader animations after welcome
+          for (int i = 0; i < _bubbleControllers.length; i++) {
+            _bubbleControllers[i].repeat(
+              reverse: true,
+              period: Duration(milliseconds: 1500 + i * 200),
             );
-          });
+          }
+
+          // Optional: Navigate to login after some delay
+          // Timer(const Duration(seconds: 3), () {
+          //   Navigator.pushReplacement(
+          //     context,
+          //     MaterialPageRoute(builder: (context) => const LoginPage()),
+          //   );
+          // });
         });
       });
     });
@@ -84,92 +109,154 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _logoController?.dispose(); // ✅ Free resources when widget removed
-    _textController?.dispose(); // ✅ Same for text animation controller
-    super.dispose(); // ✅ Always call super.dispose
+    _logoController?.dispose();
+    _textController?.dispose();
+    for (var controller in _bubbleControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Widget buildBubble(int index) {
+    return AnimatedBuilder(
+      animation: _bubbleAnimations[index],
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _bubbleAnimations[index].value,
+          child: Container(
+            width: 5,
+            height: 5,
+            margin: const EdgeInsets.symmetric(horizontal: 5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [
+                  Color.fromARGB(255, 255, 201, 4),
+                  Color.fromARGB(255, 254, 174, 61),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-// Inside build method
-final screenWidth = MediaQuery.of(context).size.width;
-final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-return Scaffold(
-  backgroundColor: Colors.black,
-  body: Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Logo + title row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Logo animation
-            ScaleTransition(
-              scale: _logoAnimation ?? const AlwaysStoppedAnimation(1.0),
-              child: Image.asset(
-                "assets/logoImage.png",
-                height: screenHeight * 0.25, // ✅ 25% of screen height
-                width: screenWidth * 0.25,   // ✅ 25% of screen width
-              ),
-            ),
-            SizedBox(width: screenWidth * 0.03), // ✅ 3% of screen width
-            // English title
-            SlideTransition(
-              position:
-                  _textAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
-              child: Text(
-                "SPORT BRANDS",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: screenWidth * 0.07, // ✅ 7% of screen width
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        // Arabic subtitle (responsive)
-        Transform.translate(
-          offset: Offset(0, -screenHeight * 0.08), // ✅ negative 8% of height
-          child: Padding(
-            padding: EdgeInsets.only(left: screenWidth * 0.45), // ✅ 45% of width
-            child: SlideTransition(
-              position:
-                  _textAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
-              child: Text(
-                "ماركات عالمية",
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: screenWidth * 0.04, // ✅ 4% of screen width
-                ),
-              ),
-            ),
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.black, const Color.fromARGB(255, 30, 29, 29)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo + English Title
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  RotationTransition(
+                    turns: _logoRotation ?? AlwaysStoppedAnimation(0),
+                    child: ScaleTransition(
+                      scale: _logoAnimation ?? AlwaysStoppedAnimation(1.0),
+                      child: SizedBox(
+                        height: screenHeight * 0.35,
+                        width: screenWidth * 0.35,
+                        child: Image.asset(
+                          "assets/logoImage.png",
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Flexible(
+                    child: SlideTransition(
+                      position:
+                          _textAnimation ??
+                          const AlwaysStoppedAnimation(Offset.zero),
+                      child: Text(
+                        "SPORT BRANDS",
+                        style: GoogleFonts.robotoCondensed(
+                          color: Colors.white,
+                          fontSize: screenWidth * 0.07,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
 
-        SizedBox(height: screenHeight * 0.05), // ✅ 5% of screen height
+              // Arabic Subtitle
+              Transform.translate(
+                offset: Offset(0, -screenHeight * 0.12),
+                child: Padding(
+                  padding: EdgeInsets.only(left: screenWidth * 0.55),
+                  child: SlideTransition(
+                    position:
+                        _textAnimation ??
+                        const AlwaysStoppedAnimation(Offset.zero),
+                    child: Text(
+                      "ماركات عالمية",
+                      style: GoogleFonts.cairo(
+                        color: Colors.orange,
+                        fontSize: screenWidth * 0.05,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
-        // Welcome message
-        AnimatedOpacity(
-          opacity: _showWelcome ? 1.0 : 0.0,
-          duration: const Duration(seconds: 2),
-          child: Text(
-            "Welcome to Sport Brands 👟",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: screenWidth * 0.06, // ✅ responsive font size
-              fontWeight: FontWeight.bold,
-            ),
+              SizedBox(height: screenHeight * 0.05),
+
+              // Welcome Message with Glow
+              AnimatedOpacity(
+                opacity: _showWelcome ? 1.0 : 0.0,
+                duration: const Duration(seconds: 2),
+                child: Column(
+                  children: [
+                    Text(
+                      "Welcome to Sport Brands",
+                      style: GoogleFonts.robotoCondensed(
+                        color: const Color.fromARGB(255, 255, 255, 255),
+                        fontSize: screenWidth * 0.07,
+                        fontWeight: FontWeight.bold,
+                        shadows: [
+                          Shadow(
+                            // ignore: deprecated_member_use
+                            color: const Color.fromARGB(255, 240, 225, 3).withOpacity(0.5),
+                            offset: const Offset(0, 0),
+                            blurRadius: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.08),
+                    // Bubble Loader
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(3, (index) => buildBubble(index)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ],
-    ),
-  ),
-);
+      ),
+    );
   }
 }
