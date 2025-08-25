@@ -96,12 +96,12 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
           }
 
           // Optional: Navigate to login after some delay
-          // Timer(const Duration(seconds: 3), () {
-          //   Navigator.pushReplacement(
-          //     context,
-          //     MaterialPageRoute(builder: (context) => const LoginPage()),
-          //   );
-          // });
+          Timer(const Duration(seconds: 3), () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          });
         });
       });
     });
@@ -237,7 +237,12 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
                         shadows: [
                           Shadow(
                             // ignore: deprecated_member_use
-                            color: const Color.fromARGB(255, 240, 225, 3).withOpacity(0.5),
+                            color: const Color.fromARGB(
+                              255,
+                              240,
+                              225,
+                              3,
+                            ).withOpacity(0.5),
                             offset: const Offset(0, 0),
                             blurRadius: 20,
                           ),
