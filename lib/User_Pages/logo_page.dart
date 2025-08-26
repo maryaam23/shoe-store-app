@@ -1,8 +1,9 @@
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'login_page.dart'; // replace with your login page import
+import 'dart:async'; // To use Timer (delays & scheduled tasks)
+import 'package:flutter/material.dart'; // Core Flutter UI toolkit
+import 'package:google_fonts/google_fonts.dart'; // To use Google Fonts
+import 'login_page.dart'; // Navigate to login screen after splash
 
+// A StatefulWidget allows us to rebuild the UI when state/animations change
 class LogoScreen extends StatefulWidget {
   const LogoScreen({super.key});
 
@@ -10,17 +11,18 @@ class LogoScreen extends StatefulWidget {
   State<LogoScreen> createState() => _LogoScreenState();
 }
 
+// TickerProviderStateMixin provides "vsync" → needed for animations
 class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
-  AnimationController? _logoController;
-  Animation<double>? _logoAnimation;
-  Animation<double>? _logoRotation;
+  AnimationController? _logoController; // controls logo animation (timing)
+  Animation<double>? _logoAnimation; // scaling (bounce effect)
+  Animation<double>? _logoRotation; // rotation animation
 
-  AnimationController? _textController;
-  Animation<Offset>? _textAnimation;
+  AnimationController? _textController; // controls text slide-in
+  Animation<Offset>? _textAnimation; // animation for sliding text
 
-  bool _showWelcome = false;
+  bool _showWelcome = false; // flag to show/hide welcome message
 
-  // Loader Animation Controllers
+  // Loader (3 bouncing bubbles) animations
   late List<AnimationController> _bubbleControllers;
   late List<Animation<double>> _bubbleAnimations;
 
@@ -28,80 +30,84 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Logo Animation Controller
+    // --- LOGO ANIMATION ---
     _logoController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
+      vsync: this, // sync with screen refresh to save battery
+      duration: const Duration(seconds: 2), // animation lasts 2 seconds
     );
 
-    // Bounce Scale Animation
+    // Bounce scaling effect for logo (like it pops in)
     _logoAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(
-          begin: 0.0,
-          end: 1.2,
-        ).chain(CurveTween(curve: Curves.elasticOut)),
+        tween: Tween(begin: 0.0, end: 1.2) // grow from invisible → larger
+            .chain(CurveTween(curve: Curves.elasticOut)), // bouncy effect
         weight: 50,
       ),
-      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 50),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.2, end: 1.0), // settle back to normal size
+        weight: 50,
+      ),
     ]).animate(_logoController!);
 
-    // Rotation Animation
+    // Small rotation effect when logo appears
     _logoRotation = Tween<double>(begin: -0.2, end: 0.0).animate(
       CurvedAnimation(parent: _logoController!, curve: Curves.easeOutBack),
     );
 
-    // Text Animation Controller
+    // --- TEXT ANIMATION ---
     _textController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1),
+      duration: const Duration(seconds: 1), // 1 second slide animation
     );
 
-    // Slide-in Text Animation
+    // Slide from bottom → to normal position
     _textAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _textController!, curve: Curves.easeOut));
+      begin: const Offset(0, 1), // start off-screen (below)
+      end: Offset.zero, // slide into place
+    ).animate(
+      CurvedAnimation(parent: _textController!, curve: Curves.easeOut),
+    );
 
-    // Bubble loader controllers
+    // --- BUBBLE LOADER ANIMATION ---
     _bubbleControllers = List.generate(
-      3,
+      3, // 3 bubbles
       (index) => AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 1500),
+        duration: const Duration(milliseconds: 1500), // each bubble 1.5s cycle
       ),
     );
 
-    _bubbleAnimations =
-        _bubbleControllers.map((controller) {
-          return Tween<double>(begin: 1.0, end: 2.0).animate(
-            CurvedAnimation(parent: controller, curve: Curves.easeInOut),
-          );
-        }).toList();
+    // Each bubble grows/shrinks smoothly
+    _bubbleAnimations = _bubbleControllers.map((controller) {
+      return Tween<double>(begin: 1.0, end: 2.0).animate(
+        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+      );
+    }).toList();
 
-    // Run logo and text animations
+    // --- RUN SEQUENCE ---
     _logoController!.forward().whenComplete(() {
       _textController!.forward().whenComplete(() {
+        // Delay 1s → then show welcome
         Timer(const Duration(seconds: 1), () {
           setState(() {
-            _showWelcome = true;
+            _showWelcome = true; // triggers rebuild
           });
 
-          // Start bubble loader animations after welcome
+          // Start bubbles after welcome appears
           for (int i = 0; i < _bubbleControllers.length; i++) {
             _bubbleControllers[i].repeat(
-              reverse: true,
-              period: Duration(milliseconds: 1500 + i * 200),
+              reverse: true, // grow/shrink repeatedly
+              period: Duration(milliseconds: 1500 + i * 200), // staggered
             );
           }
 
-          // Optional: Navigate to login after some delay
-          Timer(const Duration(seconds: 3), () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginPage()),
-            );
-          });
+          // Navigate automatically to LoginPage after 3s
+          // Timer(const Duration(seconds: 3), () {
+          //   Navigator.pushReplacement(
+          //     context,
+          //     MaterialPageRoute(builder: (context) => const LoginPage()),
+          //   );
+          // });
         });
       });
     });
@@ -109,6 +115,7 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // Always dispose controllers → free memory
     _logoController?.dispose();
     _textController?.dispose();
     for (var controller in _bubbleControllers) {
@@ -117,19 +124,20 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // Reusable bubble widget (for loader)
   Widget buildBubble(int index) {
     return AnimatedBuilder(
       animation: _bubbleAnimations[index],
       builder: (context, child) {
         return Transform.scale(
-          scale: _bubbleAnimations[index].value,
+          scale: _bubbleAnimations[index].value, // bubble size changes
           child: Container(
             width: 5,
             height: 5,
             margin: const EdgeInsets.symmetric(horizontal: 5),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
+              shape: BoxShape.circle, // circle bubble
+              gradient: const LinearGradient( // nice glowing gradient
                 colors: [
                   Color.fromARGB(255, 255, 201, 4),
                   Color.fromARGB(255, 254, 174, 61),
@@ -146,45 +154,45 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // Get device screen size for responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.black, const Color.fromARGB(255, 30, 29, 29)],
+          gradient: LinearGradient( // background gradient
+            colors: [const Color.fromARGB(255, 0, 0, 0), const Color.fromARGB(234, 5, 5, 5)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center, // center vertically
             children: [
-              // Logo + English Title
+              // --- LOGO + ENGLISH TITLE ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  RotationTransition(
+                  RotationTransition( // rotate logo slightly
                     turns: _logoRotation ?? AlwaysStoppedAnimation(0),
-                    child: ScaleTransition(
+                    child: ScaleTransition( // bounce scale effect
                       scale: _logoAnimation ?? AlwaysStoppedAnimation(1.0),
                       child: SizedBox(
                         height: screenHeight * 0.35,
                         width: screenWidth * 0.35,
                         child: Image.asset(
-                          "assets/logoImage.png",
+                          "assets/logoImage.png", // logo file
                           fit: BoxFit.contain,
                         ),
                       ),
                     ),
                   ),
-                  Flexible(
+                  Flexible( // text adjusts to screen size
                     child: SlideTransition(
-                      position:
-                          _textAnimation ??
+                      position: _textAnimation ??
                           const AlwaysStoppedAnimation(Offset.zero),
                       child: Text(
                         "SPORT BRANDS",
@@ -192,7 +200,7 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
                           color: Colors.white,
                           fontSize: screenWidth * 0.07,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                          letterSpacing: 2, // spacing between letters
                         ),
                       ),
                     ),
@@ -200,17 +208,16 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
                 ],
               ),
 
-              // Arabic Subtitle
-              Transform.translate(
+              // --- ARABIC SUBTITLE ---
+              Transform.translate( // move upwards for alignment
                 offset: Offset(0, -screenHeight * 0.12),
                 child: Padding(
                   padding: EdgeInsets.only(left: screenWidth * 0.55),
                   child: SlideTransition(
                     position:
-                        _textAnimation ??
-                        const AlwaysStoppedAnimation(Offset.zero),
+                        _textAnimation ?? const AlwaysStoppedAnimation(Offset.zero),
                     child: Text(
-                      "ماركات عالمية",
+                      "ماركات عالمية", // Arabic text
                       style: GoogleFonts.cairo(
                         color: Colors.orange,
                         fontSize: screenWidth * 0.05,
@@ -222,27 +229,22 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
 
               SizedBox(height: screenHeight * 0.05),
 
-              // Welcome Message with Glow
+              // --- WELCOME MESSAGE + LOADER ---
               AnimatedOpacity(
-                opacity: _showWelcome ? 1.0 : 0.0,
+                opacity: _showWelcome ? 1.0 : 0.0, // fade-in welcome
                 duration: const Duration(seconds: 2),
                 child: Column(
                   children: [
                     Text(
                       "Welcome to Sport Brands",
                       style: GoogleFonts.robotoCondensed(
-                        color: const Color.fromARGB(255, 255, 255, 255),
+                        color: Colors.white,
                         fontSize: screenWidth * 0.07,
                         fontWeight: FontWeight.bold,
                         shadows: [
-                          Shadow(
-                            // ignore: deprecated_member_use
-                            color: const Color.fromARGB(
-                              255,
-                              240,
-                              225,
-                              3,
-                            ).withOpacity(0.5),
+                          Shadow( // glowing effect
+                            color: const Color.fromARGB(255, 240, 225, 3)
+                                .withOpacity(0.5),
                             offset: const Offset(0, 0),
                             blurRadius: 20,
                           ),
@@ -250,7 +252,7 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     SizedBox(height: screenHeight * 0.08),
-                    // Bubble Loader
+                    // Bubbles loader (3 animated dots)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(3, (index) => buildBubble(index)),

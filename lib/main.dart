@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'User_Pages/logo_page.dart';
 import 'User_Pages/signup_page.dart';
+import 'User_Pages/home_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const SignupPage(),
+      home: const LogoScreen(),
     );
   }
 }
