@@ -102,12 +102,12 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
           }
 
           // Navigate automatically to LoginPage after 3s
-          // Timer(const Duration(seconds: 3), () {
-          //   Navigator.pushReplacement(
-          //     context,
-          //     MaterialPageRoute(builder: (context) => const LoginPage()),
-          //   );
-          // });
+           Timer(const Duration(seconds: 3), () {
+             Navigator.pushReplacement(
+               context,
+               MaterialPageRoute(builder: (context) => const LoginPage()),
+             );
+           });
         });
       });
     });
