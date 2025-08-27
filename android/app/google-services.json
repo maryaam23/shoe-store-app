@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "848203053924",
+    "project_id": "sport-brands-42c8a",
+    "storage_bucket": "sport-brands-42c8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:848203053924:android:7664d0352d3dd2934b9871",
+        "android_client_info": {
+          "package_name": "com.example.shoe_store_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAz3vlydpBIh8P1JJ7vFcNgfmLTfRfZ8l0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

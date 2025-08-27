@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'User_Pages/logo_page.dart';
-import 'User_Pages/signup_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter engine is ready
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ); // Initializes Firebase
   runApp(const MyApp());
 }
 
@@ -17,7 +24,11 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const LogoScreen(),
+      //home: const LogoScreen(),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Firebase Connected!')),
+        body: const Center(child: Text('Hello Firebase 👋')),
+      ),
     );
   }
 }
