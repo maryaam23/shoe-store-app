@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'login_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -13,7 +14,8 @@ class _SignupPageState extends State<SignupPage> {
   // controllers
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   // dropdown selections
   String? _selectedGender;
@@ -32,7 +34,7 @@ class _SignupPageState extends State<SignupPage> {
     "Jericho",
     "Salfit",
     "Tubas",
-    "East Jerusalem"
+    "East Jerusalem",
   ];
 
   @override
@@ -88,10 +90,7 @@ class _SignupPageState extends State<SignupPage> {
 
                   const Text(
                     "Create your account below",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                   const SizedBox(height: 20),
 
@@ -100,8 +99,11 @@ class _SignupPageState extends State<SignupPage> {
                   const SizedBox(height: 10),
                   _buildTextField("Email", Icons.email),
                   const SizedBox(height: 10),
-                  _buildTextField("Phone Number", Icons.phone,
-                      keyboardType: TextInputType.phone),
+                  _buildTextField(
+                    "Phone Number",
+                    Icons.phone,
+                    keyboardType: TextInputType.phone,
+                  ),
                   const SizedBox(height: 10),
 
                   // Date of Birth with picker
@@ -122,10 +124,16 @@ class _SignupPageState extends State<SignupPage> {
                         });
                       }
                     },
-                    validator: (value) =>
-                        value == null || value.isEmpty ? "Enter Date of Birth" : null,
+                    validator:
+                        (value) =>
+                            value == null || value.isEmpty
+                                ? "Enter Date of Birth"
+                                : null,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.calendar_today,
+                        color: Colors.grey,
+                      ),
                       labelText: "Date of Birth",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -137,18 +145,22 @@ class _SignupPageState extends State<SignupPage> {
                   // Gender dropdown
                   DropdownButtonFormField<String>(
                     value: _selectedGender,
-                    items: _genders
-                        .map((g) => DropdownMenuItem(
-                              value: g,
-                              child: Text(g),
-                            ))
-                        .toList(),
+                    items:
+                        _genders
+                            .map(
+                              (g) => DropdownMenuItem(value: g, child: Text(g)),
+                            )
+                            .toList(),
                     onChanged: (val) {
                       setState(() => _selectedGender = val);
                     },
-                    validator: (value) => value == null ? "Select Gender" : null,
+                    validator:
+                        (value) => value == null ? "Select Gender" : null,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                        color: Colors.grey,
+                      ),
                       labelText: "Gender",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -180,12 +192,15 @@ class _SignupPageState extends State<SignupPage> {
                   // City dropdown
                   DropdownButtonFormField<String>(
                     value: _selectedCity,
-                    items: _cities
-                        .map((city) => DropdownMenuItem(
-                              value: city,
-                              child: Text(city),
-                            ))
-                        .toList(),
+                    items:
+                        _cities
+                            .map(
+                              (city) => DropdownMenuItem(
+                                value: city,
+                                child: Text(city),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) {
                       setState(() {
                         _selectedCity = value!;
@@ -193,7 +208,10 @@ class _SignupPageState extends State<SignupPage> {
                     },
                     validator: (value) => value == null ? "Select City" : null,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.location_city, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.location_city,
+                        color: Colors.grey,
+                      ),
                       labelText: "City",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -206,8 +224,11 @@ class _SignupPageState extends State<SignupPage> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    validator: (value) =>
-                        value == null || value.isEmpty ? "Enter Password" : null,
+                    validator:
+                        (value) =>
+                            value == null || value.isEmpty
+                                ? "Enter Password"
+                                : null,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.lock, color: Colors.grey),
                       labelText: "Password",
@@ -232,7 +253,10 @@ class _SignupPageState extends State<SignupPage> {
                       return null;
                     },
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                      prefixIcon: const Icon(
+                        Icons.lock_outline,
+                        color: Colors.grey,
+                      ),
                       labelText: "Confirm Password",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -256,7 +280,9 @@ class _SignupPageState extends State<SignupPage> {
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Form submitted successfully!")),
+                            const SnackBar(
+                              content: Text("Form submitted successfully!"),
+                            ),
                           );
                         }
                       },
@@ -270,23 +296,123 @@ class _SignupPageState extends State<SignupPage> {
                   const SizedBox(height: 10),
 
                   // Sign in link
+                  // Sign in link
                   Center(
-                    child: RichText(
-                      text: TextSpan(
-                        text: "Already have an account? ",
-                        style: const TextStyle(color: Colors.black54, fontSize: 14),
-                        children: [
-                          TextSpan(
-                            text: "Sign In",
-                            style: TextStyle(
-                              color: Colors.blue.shade700,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    child: GestureDetector(
+                      onTap: () {
+                        // Action when the whole text is pressed
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginPage(),
                           ),
-                        ],
+                        );
+                      },
+                      child: RichText(
+                        text: TextSpan(
+                          text: "Already have an account? ",
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 14,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: "Sign In",
+                              style: TextStyle(
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  )
+                  ),
+
+                  // --- Added Social Buttons & Terms ---
+                  const SizedBox(height: 20),
+
+                  // Social Buttons
+                  Center(
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFe7edf4),
+                            foregroundColor: const Color(0xFF0d141c),
+                            minimumSize: const Size(84, 40),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          child: const Text(
+                            'Google',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFe7edf4),
+                            foregroundColor: const Color(0xFF0d141c),
+                            minimumSize: const Size(84, 40),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          child: const Text(
+                            'Facebook',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Terms & Conditions
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "By signing up, you agree to our Terms & Conditions and Privacy Policy",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Color(0xFF49709c)),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Optional: Light/Dark images at the bottom
+                  Column(
+                    children: [
+                      Image.asset(
+                        'assets/dark.svg', // replace with your dark image path
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                      const SizedBox(height: 10),
+                      Image.asset(
+                        'assets/light.svg', // replace with your light image path
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -296,18 +422,21 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  Widget _buildTextField(String label, IconData icon,
-      {bool isPassword = false, TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField(
+    String label,
+    IconData icon, {
+    bool isPassword = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return TextFormField(
       obscureText: isPassword,
       keyboardType: keyboardType,
-      validator: (value) => (value == null || value.isEmpty) ? "Enter $label" : null,
+      validator:
+          (value) => (value == null || value.isEmpty) ? "Enter $label" : null,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey),
         labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
