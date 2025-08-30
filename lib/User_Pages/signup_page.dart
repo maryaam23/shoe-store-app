@@ -214,7 +214,7 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize),
+                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -245,7 +245,7 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize),
+                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -281,7 +281,7 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize),
+                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
                       ),
                       SizedBox(height: spacing / 2),
 
