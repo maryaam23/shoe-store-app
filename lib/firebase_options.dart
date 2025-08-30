@@ -42,12 +42,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBKMnYJKk8T3u1DSk9ApXmBUCQtPyHL_XI',
-    appId: '1:848203053924:web:b9f38a3f8e2ea18e4b9871',
+    appId: '1:848203053924:web:9b88758502c1e4ca4b9871', // updated
     messagingSenderId: '848203053924',
     projectId: 'sport-brands-42c8a',
     authDomain: 'sport-brands-42c8a.firebaseapp.com',
     storageBucket: 'sport-brands-42c8a.firebasestorage.app',
-    measurementId: 'G-5D87S9GLSG',
+    measurementId: 'G-G93KR1J3QW', // updated
   );
 
   static const FirebaseOptions android = FirebaseOptions(

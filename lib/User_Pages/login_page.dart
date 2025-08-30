@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 //import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
+import 'package:shoe_store_app/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 import 'home_page.dart';
 import 'signup_page.dart';
@@ -23,16 +26,13 @@ class _LoginPageState extends State<LoginPage> {
   //final Box _boxLogin = Hive.box("login");
   //final Box _boxAccounts = Hive.box("accounts");
 
-  // Fake replacements for testing UI only
-  final Map<String, dynamic> _boxLogin = {};
-  final Map<String, dynamic> _boxAccounts = {
-    "test": "1234", // dummy account
-  };
+  final user = FirebaseAuth.instance.currentUser;
+ 
 
   @override
   Widget build(BuildContext context) {
     // If user is already logged in, go directly to HomePage
-    if (_boxLogin["loginStatus"] ?? false) {
+    if (user != null) {
       return HomePage();
     }
 
@@ -86,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
                 controller: _controllerUsername, // Controller to get input
                 keyboardType: TextInputType.name, // Keyboard type
                 decoration: InputDecoration(
-                  labelText: "Username",
+                  labelText: "Email",
                   prefixIcon: const Icon(
                     Icons.person_outline,
                   ), // Icon on the left
@@ -103,9 +103,9 @@ class _LoginPageState extends State<LoginPage> {
                             .requestFocus(), // Move focus to password field when done
                 validator: (String? value) {
                   if (value == null || value.isEmpty) {
-                    return "Please enter username.";
-                  } else if (!_boxAccounts.containsKey(value)) {
-                    return "Username is not registered.";
+                    return "Please enter email.";
+                  } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                    return "Enter a valid email.";
                   }
 
                   return null;
@@ -143,11 +143,8 @@ class _LoginPageState extends State<LoginPage> {
                 validator: (String? value) {
                   if (value == null || value.isEmpty) {
                     return "Please enter password.";
-                  } else if (value != _boxAccounts[_controllerUsername.text]) {
-                    return "Wrong password.";
-                  }
+                  } return null; // No manual password check needed
 
-                  return null;
                 },
               ),
               const SizedBox(height: 60),
@@ -165,21 +162,33 @@ class _LoginPageState extends State<LoginPage> {
                         ), // Rounded corners
                       ),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState?.validate() ?? false) {
-                        _boxLogin["loginStatus"] = true;
-                        _boxLogin["userName"] = _controllerUsername.text;
+                        try {
+                          // Call Firebase email login
+                          final user = await AuthService().signInWithEmail(
+                            _controllerUsername.text.trim(), // email
+                            _controllerPassword.text.trim(), // password
+                          );
 
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) {
-                              return HomePage();
-                            },
-                          ),
-                        );
+                          if (user != null) {
+                            // ✅ Login successful
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (_) => HomePage()),
+                            );
+                          }
+                        } catch (e) {
+                          // ❌ Show error if login fails
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Login failed: ${e.toString()}"),
+                            ),
+                          );
+                        }
                       }
                     },
+
                     child: const Text("Login"),
                   ),
                   Row(
@@ -221,8 +230,18 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       // Google
                       IconButton(
-                        onPressed: () {
-                          //  handle Google login
+                        onPressed: () async {
+                          final user = await AuthService().signInWithGoogle();
+                          if (user != null) {
+                            print("✅ Google login: ${user.displayName}");
+                            // You can navigate to your home page here
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (_) => HomePage()),
+                            );
+                          } else {
+                            print("❌ Google login failed");
+                          }
                         },
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.white,
@@ -249,11 +268,25 @@ class _LoginPageState extends State<LoginPage> {
 
                       // Facebook
                       IconButton(
-                        onPressed: () {
-                          // handle Facebook login
+                        onPressed: () async {
+                          final user = await AuthService().signInWithFacebook();
+                          if (user != null) {
+                            print("✅ Facebook login: ${user.displayName}");
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (_) => HomePage()),
+                            );
+                          } else {
+                            print("❌ Facebook login failed");
+                          }
                         },
                         style: IconButton.styleFrom(
-                          backgroundColor: Color(0xFF1877F2), // Facebook blue
+                          backgroundColor: Color.fromARGB(
+                            255,
+                            0,
+                            0,
+                            0,
+                          ), // Facebook blue
                         ),
                         icon: SvgPicture.string(
                           '''

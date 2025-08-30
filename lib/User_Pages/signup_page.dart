@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
+import 'package:shoe_store_app/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'home_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -13,6 +17,7 @@ class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
 
   // controllers
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
@@ -98,7 +103,23 @@ class _SignupPageState extends State<SignupPage> {
                   // Input fields
                   _buildTextField("Full Name", Icons.person),
                   const SizedBox(height: 10),
-                  _buildTextField("Email", Icons.email),
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    validator:
+                        (value) =>
+                            value == null || value.isEmpty
+                                ? "Enter email"
+                                : null,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.email, color: Colors.grey),
+                      labelText: "Email",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 10),
                   _buildTextField(
                     "Phone Number",
@@ -278,15 +299,51 @@ class _SignupPageState extends State<SignupPage> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (_formKey.currentState!.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Form submitted successfully!"),
-                            ),
-                          );
+                          try {
+                            // Create user with email & password
+                            UserCredential userCredential = await FirebaseAuth
+                                .instance
+                                .createUserWithEmailAndPassword(
+                                  email: _emailController.text.trim(),
+                                  password: _passwordController.text.trim(),
+                                );
+
+                            // Success
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Account created successfully!"),
+                              ),
+                            );
+
+                            // Optional: Navigate to LoginPage or HomePage
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LoginPage(),
+                              ),
+                            );
+                          } on FirebaseAuthException catch (e) {
+                            String message = "An error occurred";
+                            if (e.code == 'email-already-in-use') {
+                              message = "This email is already registered";
+                            } else if (e.code == 'weak-password') {
+                              message = "Password is too weak";
+                            } else if (e.code == 'invalid-email') {
+                              message = "Invalid email address";
+                            }
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(message)));
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())),
+                            );
+                          }
                         }
                       },
+
                       child: const Text(
                         "Sign Up",
                         style: TextStyle(fontSize: 16, color: Colors.white),
@@ -335,27 +392,41 @@ class _SignupPageState extends State<SignupPage> {
 
                   // Social Buttons
                   Column(
-                children: [
-                  const Text(
-                    "Or Sign in with",
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 15),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center, // Center all social icons
                     children: [
-                      // Google
-                      IconButton(
-                        onPressed: () {
-                          //  handle Google login
-                        },
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.grey),
+                      const Text(
+                        "Or Sign in with",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
-                        icon: SvgPicture.string(
-                          '''
+                      ),
+                      const SizedBox(height: 15),
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.center, // Center all social icons
+                        children: [
+                          // Google
+                          IconButton(
+                            onPressed: () async {
+                              final user =
+                                  await AuthService().signInWithGoogle();
+                              if (user != null) {
+                                print("✅ Google login: ${user.displayName}");
+                                // You can navigate to your home page here
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => HomePage()),
+                                );
+                              } else {
+                                print("❌ Google login failed");
+                              }
+                            },
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.grey),
+                            ),
+                            icon: SvgPicture.string(
+                              '''
                           <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 488 512">
                             <path d="M488 261.8C488 403.3 391.1 504 
                             248 504 110.8 504 0 393.2 0 256S110.8 
@@ -367,22 +438,37 @@ class _SignupPageState extends State<SignupPage> {
                             12.7 3.9 24.9 3.9 41.4z"/>
                           </svg>
                           ''',
-                          width: 24,
-                          height: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 15),
+                              width: 24,
+                              height: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
 
-                      // Facebook
-                    IconButton(
-                      onPressed: () {
-                        // handle Facebook login
-                      },
-                      style: IconButton.styleFrom(
-                        backgroundColor: Color(0xFF1877F2), // Facebook blue
-                      ),
-                      icon: SvgPicture.string(
-                        '''
+                          // Facebook
+                          IconButton(
+                            onPressed: () async {
+                              final user =
+                                  await AuthService().signInWithFacebook();
+                              if (user != null) {
+                                print("✅ Facebook login: ${user.displayName}");
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => HomePage()),
+                                );
+                              } else {
+                                print("❌ Facebook login failed");
+                              }
+                            },
+                            style: IconButton.styleFrom(
+                              backgroundColor: Color.fromARGB(
+                                255,
+                                0,
+                                0,
+                                0,
+                              ), // Facebook blue
+                            ),
+                            icon: SvgPicture.string(
+                              '''
                         <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 320 512">
                           <path fill="white" d="M279.14 288l14.22-92.66h-88.91V127.41c0-25.35 
                           12.42-50.06 52.24-50.06h40.42V6.26S293.3 
@@ -390,15 +476,14 @@ class _SignupPageState extends State<SignupPage> {
                           124.72V195.3H86.41V288h60.62v224h92.66V288z"/>
                         </svg>
                         ''',
-                        width: 24,
-                        height: 24,
+                              width: 24,
+                              height: 24,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-
                     ],
                   ),
-                ],
-              ),
 
                   const SizedBox(height: 12),
 

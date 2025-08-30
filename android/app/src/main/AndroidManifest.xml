@@ -3,6 +3,12 @@
         android:label="shoe_store_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- Add your API_KEY meta-data here -->
+        <meta-data
+            android:name="com.google.android.gms.auth.api.signin.API_KEY"
+            android:value="@string/default_web_client_id" />
+            
         <activity
             android:name=".MainActivity"
             android:exported="true"
