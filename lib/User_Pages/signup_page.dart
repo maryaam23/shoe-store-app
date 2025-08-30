@@ -71,6 +71,7 @@ class _SignupPageState extends State<SignupPage> {
           ),
           child: Center(
             child: SingleChildScrollView(
+              
               child: Container(
                 padding: EdgeInsets.all(padding),
                 constraints: BoxConstraints(maxWidth: size.width * 0.92),
