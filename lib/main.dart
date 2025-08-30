@@ -24,11 +24,11 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      //home: const LogoScreen(),
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Firebase Connected!')),
-        body: const Center(child: Text('Hello Firebase 👋')),
-      ),
+      home: const LogoScreen(),
+      // home: Scaffold(
+      //   appBar: AppBar(title: const Text('Firebase Connected!')),
+      //   body: const Center(child: Text('Hello Firebase 👋')),
+      // ),
     );
   }
 }
