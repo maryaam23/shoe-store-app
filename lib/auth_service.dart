@@ -7,53 +7,74 @@ class AuthService {
 
   // ✅ Email Signup
   Future<User?> signUpWithEmail(String email, String password) async {
-    final userCredential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    return userCredential.user;
-  }
-
-  // ✅ Email Login
-  Future<User?> signInWithEmail(String email, String password) async {
-    final userCredential = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    return userCredential.user;
-  }
-
-  // ✅ Google Login
-  Future<User?> signInWithGoogle() async {
-    final googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) return null;
-
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    final userCredential = await _auth.signInWithCredential(credential);
-    return userCredential.user;
-  }
-
-  // ✅ Facebook Login
-  Future<User?> signInWithFacebook() async {
-    final LoginResult result = await FacebookAuth.instance.login();
-
-    if (result.status == LoginStatus.success) {
-      final accessToken = result.accessToken;
-      final credential = FacebookAuthProvider.credential(accessToken!.token);
-      final userCredential = await _auth.signInWithCredential(credential);
+    try {
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       return userCredential.user;
-    } else {
-      print("❌ Facebook login failed: ${result.status}");
+    } catch (e) {
+      print('Email signup error: $e');
       return null;
     }
   }
 
-  // ✅ Logout
+  // ✅ Email Login
+  Future<User?> signInWithEmail(String email, String password) async {
+    try {
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return userCredential.user;
+    } catch (e) {
+      print('Email login error: $e');
+      return null;
+    }
+  }
+
+  // ✅ Google Login
+  Future<User?> signInWithGoogle() async {
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null;
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      return userCredential.user;
+    } catch (e) {
+      print('Google login error: $e');
+      return null;
+    }
+  }
+
+  // ✅ Facebook Login
+  Future<User?> signInWithFacebook() async {
+    try {
+      final LoginResult result = await FacebookAuth.instance.login();
+
+      if (result.status == LoginStatus.success) {
+        final credential =
+            FacebookAuthProvider.credential(result.accessToken!.token);
+
+        final userCredential = await _auth.signInWithCredential(credential);
+        return userCredential.user;
+      } else {
+        print('Facebook login failed: ${result.status}');
+        return null;
+      }
+    } catch (e) {
+      print('Facebook login exception: $e');
+      return null;
+    }
+  }
+
+  // ✅ Logout from all
   Future<void> signOut() async {
     await _auth.signOut();
     await GoogleSignIn().signOut();
