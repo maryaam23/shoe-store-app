@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
+import 'package:shoe_store_app/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'home_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -11,7 +14,7 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
-
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
@@ -71,7 +74,6 @@ class _SignupPageState extends State<SignupPage> {
           ),
           child: Center(
             child: SingleChildScrollView(
-              
               child: Container(
                 padding: EdgeInsets.all(padding),
                 constraints: BoxConstraints(maxWidth: size.width * 0.92),
@@ -128,8 +130,20 @@ class _SignupPageState extends State<SignupPage> {
                       // Input fields
                       _buildTextField("Full Name", Icons.person, inputFontSize),
                       SizedBox(height: spacing / 2),
-                      _buildTextField("Email", Icons.email, inputFontSize),
+                      _buildTextField(
+                        "Email",
+                        Icons.email,
+                        inputFontSize,
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        validator:
+                            (value) =>
+                                value == null || value.isEmpty
+                                    ? "Enter email"
+                                    : null,
+                      ),
                       SizedBox(height: spacing / 2),
+
                       _buildTextField(
                         "Phone Number",
                         Icons.phone,
@@ -215,7 +229,10 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
+                        style: TextStyle(
+                          fontSize: inputFontSize,
+                          color: Colors.black,
+                        ),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -246,7 +263,10 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
+                        style: TextStyle(
+                          fontSize: inputFontSize,
+                          color: Colors.black,
+                        ),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -282,7 +302,10 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
+                        style: TextStyle(
+                          fontSize: inputFontSize,
+                          color: Colors.black,
+                        ),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -322,15 +345,52 @@ class _SignupPageState extends State<SignupPage> {
                                 ),
                               ),
                             ),
-                            onPressed: () {
+                            onPressed: () async {
                               if (_formKey.currentState!.validate()) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      "Form submitted successfully!",
+                                try {
+                                  // Create user with email & password
+                                  UserCredential userCredential =
+                                      await FirebaseAuth.instance
+                                          .createUserWithEmailAndPassword(
+                                            email: _emailController.text.trim(),
+                                            password:
+                                                _passwordController.text.trim(),
+                                          );
+
+                                  // Success
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Account created successfully!",
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+
+                                  // Optional: Navigate to LoginPage or HomePage
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const LoginPage(),
+                                    ),
+                                  );
+                                } on FirebaseAuthException catch (e) {
+                                  String message = "An error occurred";
+                                  if (e.code == 'email-already-in-use') {
+                                    message =
+                                        "This email is already registered";
+                                  } else if (e.code == 'weak-password') {
+                                    message = "Password is too weak";
+                                  } else if (e.code == 'invalid-email') {
+                                    message = "Invalid email address";
+                                  }
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(message)),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString())),
+                                  );
+                                }
                               }
                             },
                             child: Text(
@@ -397,7 +457,24 @@ class _SignupPageState extends State<SignupPage> {
                             children: [
                               // Google
                               IconButton(
-                                onPressed: () {},
+                                onPressed: () async {
+                                  final user =
+                                      await AuthService().signInWithGoogle();
+                                  if (user != null) {
+                                    print(
+                                      "✅ Google login: ${user.displayName}",
+                                    );
+                                    // You can navigate to your home page here
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => HomePage(),
+                                      ),
+                                    );
+                                  } else {
+                                    print("❌ Google login failed");
+                                  }
+                                },
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   side: const BorderSide(
@@ -418,7 +495,23 @@ class _SignupPageState extends State<SignupPage> {
                               SizedBox(width: spacing / 1.5),
                               // facebook
                               IconButton(
-                                onPressed: () {},
+                                onPressed: () async {
+                                  final user =
+                                      await AuthService().signInWithFacebook();
+                                  if (user != null) {
+                                    print(
+                                      "✅ Facebook login: ${user.displayName}",
+                                    );
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => HomePage(),
+                                      ),
+                                    );
+                                  } else {
+                                    print("❌ Facebook login failed");
+                                  }
+                                },
                                 style: IconButton.styleFrom(
                                   backgroundColor: Color.fromARGB(
                                     255,
@@ -477,38 +570,32 @@ class _SignupPageState extends State<SignupPage> {
     bool isPassword = false,
     TextEditingController? controller,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator, // ✅ added validator
   }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
       keyboardType: keyboardType,
       validator:
+          validator ??
           (value) => value == null || value.isEmpty ? "Enter $label" : null,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey, size: fontSize * 1.2),
         labelText: label,
-        labelStyle: const TextStyle(
-          color: Colors.black54,
-        ), // Label color when not focused
+        labelStyle: const TextStyle(color: Colors.black54),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
-          borderSide: const BorderSide(
-            color: Colors.black, // Border color when focused
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: Colors.black, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 10,
           horizontal: 12,
         ),
       ),
-      style: TextStyle(
-        fontSize: fontSize,
-        color: Colors.black, // Text color
-      ),
+      style: TextStyle(fontSize: fontSize, color: Colors.black),
     );
   }
 }

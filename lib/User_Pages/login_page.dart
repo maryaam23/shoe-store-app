@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-
+//import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
+import 'package:shoe_store_app/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'home_page.dart';
 import 'signup_page.dart';
 
@@ -12,15 +14,12 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final Map<String, dynamic> _boxAccounts = {
-    "test": "1234", // dummy account
-  };
-  final Map<String, dynamic> _boxLogin = {};
   final TextEditingController _controllerPassword = TextEditingController();
   final TextEditingController _controllerUsername = TextEditingController();
   final FocusNode _focusNodePassword = FocusNode();
   final GlobalKey<FormState> _formKey = GlobalKey();
   bool _obscurePassword = true;
+  final user = FirebaseAuth.instance.currentUser;
 
   @override
   void dispose() {
@@ -40,7 +39,8 @@ class _LoginPageState extends State<LoginPage> {
     final double buttonHeight = size.height * 0.065;
     final double buttonFontSize = size.width * 0.05;
 
-    if (_boxLogin["loginStatus"] ?? false) {
+    // If user is already logged in, go directly to HomePage
+    if (user != null) {
       return HomePage();
     }
 
@@ -66,7 +66,9 @@ class _LoginPageState extends State<LoginPage> {
             child: SingleChildScrollView(
               padding: EdgeInsets.zero,
               child: SizedBox(
-                width: size.width * 0.92, // <-- increase width here (95% of screen)
+                width:
+                    size.width *
+                    0.92, // <-- increase width here (95% of screen)
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: size.height * 0.97,
@@ -141,17 +143,23 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              validator: (value) {
+                              onEditingComplete:
+                                  () =>
+                                      _focusNodePassword
+                                          .requestFocus(), // Move focus to password field when done
+                              validator: (String? value) {
                                 if (value == null || value.isEmpty) {
-                                  return "Please enter username.";
-                                } else if (!_boxAccounts.containsKey(value)) {
-                                  return "Username is not registered.";
+                                  return "Please enter email.";
+                                } else if (!RegExp(
+                                  r'^[^@]+@[^@]+\.[^@]+',
+                                ).hasMatch(value)) {
+                                  return "Enter a valid email.";
                                 }
+
                                 return null;
                               },
-                              onEditingComplete:
-                                  () => _focusNodePassword.requestFocus(),
                             ),
+
                             SizedBox(height: spacing),
 
                             // Password field
@@ -196,14 +204,11 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              validator: (value) {
+                              validator: (String? value) {
                                 if (value == null || value.isEmpty) {
                                   return "Please enter password.";
-                                } else if (value !=
-                                    _boxAccounts[_controllerUsername.text]) {
-                                  return "Wrong password.";
                                 }
-                                return null;
+                                return null; // No manual password check needed
                               },
                             ),
 
@@ -266,7 +271,12 @@ class _LoginPageState extends State<LoginPage> {
                                 height: buttonHeight,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color.fromARGB(255, 0, 0, 0), // professional blue
+                                    backgroundColor: const Color.fromARGB(
+                                      255,
+                                      0,
+                                      0,
+                                      0,
+                                    ), // professional blue
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(
                                         size.width * 0.05,
@@ -275,20 +285,43 @@ class _LoginPageState extends State<LoginPage> {
                                     shadowColor: Colors.black45,
                                     elevation: 5,
                                   ),
-                                  onPressed: () {
+                                  onPressed: () async {
                                     if (_formKey.currentState?.validate() ??
                                         false) {
-                                      _boxLogin["loginStatus"] = true;
-                                      _boxLogin["userName"] =
-                                          _controllerUsername.text;
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => HomePage(),
-                                        ),
-                                      );
+                                      try {
+                                        // Call Firebase email login
+                                        final user = await AuthService()
+                                            .signInWithEmail(
+                                              _controllerUsername.text
+                                                  .trim(), // email
+                                              _controllerPassword.text
+                                                  .trim(), // password
+                                            );
+
+                                        if (user != null) {
+                                          // ✅ Login successful
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => HomePage(),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        // ❌ Show error if login fails
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              "Login failed: ${e.toString()}",
+                                            ),
+                                          ),
+                                        );
+                                      }
                                     }
                                   },
+
                                   child: Text(
                                     "Login",
                                     style: TextStyle(
@@ -331,8 +364,13 @@ class _LoginPageState extends State<LoginPage> {
                                     "Signup",
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: inputFontSize ,
-                                      color: const Color.fromARGB(255, 0, 0, 0), // orange-like
+                                      fontSize: inputFontSize,
+                                      color: const Color.fromARGB(
+                                        255,
+                                        0,
+                                        0,
+                                        0,
+                                      ), // orange-like
                                     ),
                                   ),
                                 ),
@@ -359,7 +397,25 @@ class _LoginPageState extends State<LoginPage> {
                                       color: Colors.white,
                                       svg: _googleSvg,
                                       size: size.width * 0.12,
-                                      onPressed: () {},
+                                      onPressed: () async {
+                                        final user =
+                                            await AuthService()
+                                                .signInWithGoogle();
+                                        if (user != null) {
+                                          print(
+                                            "✅ Google login: ${user.displayName}",
+                                          );
+                                          // You can navigate to your home page here
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => HomePage(),
+                                            ),
+                                          );
+                                        } else {
+                                          print("❌ Google login failed");
+                                        }
+                                      },
                                     ),
                                     SizedBox(width: spacing),
                                     _socialIconButton(
@@ -371,7 +427,24 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                       svg: _facebookSvg,
                                       size: size.width * 0.12,
-                                      onPressed: () {},
+                                      onPressed: () async {
+                                        final user =
+                                            await AuthService()
+                                                .signInWithFacebook();
+                                        if (user != null) {
+                                          print(
+                                            "✅ Facebook login: ${user.displayName}",
+                                          );
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => HomePage(),
+                                            ),
+                                          );
+                                        } else {
+                                          print("❌ Facebook login failed");
+                                        }
+                                      },
                                     ),
                                   ],
                                 ),
