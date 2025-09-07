@@ -5,6 +5,7 @@ import 'package:shoe_store_app/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_page.dart';
 
+
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
@@ -148,6 +149,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       SizedBox(height: spacing / 2),
 
+
                       _buildTextField(
                         "Phone Number",
                         Icons.phone,
@@ -269,6 +271,7 @@ class _SignupPageState extends State<SignupPage> {
                           fontSize: inputFontSize,
                           color: Colors.black,
                         ),
+                        
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -303,6 +306,7 @@ class _SignupPageState extends State<SignupPage> {
                           fontSize: inputFontSize,
                           color: Colors.black,
                         ),
+                        
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -342,6 +346,7 @@ class _SignupPageState extends State<SignupPage> {
                           fontSize: inputFontSize,
                           color: Colors.black,
                         ),
+                        
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -403,6 +408,7 @@ class _SignupPageState extends State<SignupPage> {
                                 ),
                               ),
                             ),
+                            
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
                                 try {
@@ -534,6 +540,7 @@ class _SignupPageState extends State<SignupPage> {
                                     print("❌ Google login failed");
                                   }
                                 },
+                                
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   side: const BorderSide(
@@ -571,6 +578,7 @@ class _SignupPageState extends State<SignupPage> {
                                     print("❌ Facebook login failed");
                                   }
                                 },
+                                
                                 style: IconButton.styleFrom(
                                   backgroundColor: Color.fromARGB(
                                     255,
@@ -630,6 +638,7 @@ class _SignupPageState extends State<SignupPage> {
     TextEditingController? controller,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator, // ✅ added validator
+    
   }) {
     return TextFormField(
       controller: controller,
@@ -637,17 +646,20 @@ class _SignupPageState extends State<SignupPage> {
       keyboardType: keyboardType,
       validator:
           validator ??
+          validator ??
           (value) => value == null || value.isEmpty ? "Enter $label" : null,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey, size: fontSize * 1.2),
         labelText: label,
         labelStyle: const TextStyle(color: Colors.black54),
+        
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
           borderSide: const BorderSide(color: Colors.black, width: 2),
+          
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 10,
@@ -655,6 +667,7 @@ class _SignupPageState extends State<SignupPage> {
         ),
       ),
       style: TextStyle(fontSize: fontSize, color: Colors.black),
+      
     );
   }
 }
