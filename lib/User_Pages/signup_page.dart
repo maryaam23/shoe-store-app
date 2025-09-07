@@ -3,7 +3,6 @@ import 'login_page.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
 import 'package:shoe_store_app/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'home_page.dart';
 
 class SignupPage extends StatefulWidget {
@@ -15,12 +14,7 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
-
-<<<<<<< HEAD
-  // controllers
   final TextEditingController _emailController = TextEditingController();
-=======
->>>>>>> 40c735af4a5446fe8114d61d2afaa6fb5712668b
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
@@ -80,7 +74,6 @@ class _SignupPageState extends State<SignupPage> {
           ),
           child: Center(
             child: SingleChildScrollView(
-              
               child: Container(
                 padding: EdgeInsets.all(padding),
                 constraints: BoxConstraints(maxWidth: size.width * 0.92),
@@ -93,318 +86,6 @@ class _SignupPageState extends State<SignupPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-<<<<<<< HEAD
-                      Padding(
-                        padding: const EdgeInsets.only(left: 30),
-                        child: Text(
-                          "Sign Up",
-                          style: TextStyle(
-                            fontSize: 28,
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -1,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 0,
-                        top: 12,
-                        child: Container(
-                          width: 18,
-                          height: 18,
-                          decoration: const BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    "Create your account below",
-                    style: TextStyle(fontSize: 14, color: Colors.black54),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Input fields
-                  _buildTextField("Full Name", Icons.person),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    validator:
-                        (value) =>
-                            value == null || value.isEmpty
-                                ? "Enter email"
-                                : null,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.email, color: Colors.grey),
-                      labelText: "Email",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-                  _buildTextField(
-                    "Phone Number",
-                    Icons.phone,
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Date of Birth with picker
-                  TextFormField(
-                    controller: _dobController,
-                    readOnly: true,
-                    onTap: () async {
-                      DateTime? pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime(2000),
-                        firstDate: DateTime(1900),
-                        lastDate: DateTime.now(),
-                      );
-                      if (pickedDate != null) {
-                        setState(() {
-                          _dobController.text =
-                              "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-                        });
-                      }
-                    },
-                    validator:
-                        (value) =>
-                            value == null || value.isEmpty
-                                ? "Enter Date of Birth"
-                                : null,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(
-                        Icons.calendar_today,
-                        color: Colors.grey,
-                      ),
-                      labelText: "Date of Birth",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Gender dropdown
-                  DropdownButtonFormField<String>(
-                    value: _selectedGender,
-                    items:
-                        _genders
-                            .map(
-                              (g) => DropdownMenuItem(value: g, child: Text(g)),
-                            )
-                            .toList(),
-                    onChanged: (val) {
-                      setState(() => _selectedGender = val);
-                    },
-                    validator:
-                        (value) => value == null ? "Select Gender" : null,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(
-                        Icons.person_outline,
-                        color: Colors.grey,
-                      ),
-                      labelText: "Gender",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Country - fixed to Palestine
-                  DropdownButtonFormField<String>(
-                    value: "Palestine",
-                    items: const [
-                      DropdownMenuItem(
-                        value: "Palestine",
-                        child: Text("Palestine"),
-                      ),
-                    ],
-                    onChanged: null, // disable changes
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.flag, color: Colors.grey),
-                      labelText: "Country",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // City dropdown
-                  DropdownButtonFormField<String>(
-                    value: _selectedCity,
-                    items:
-                        _cities
-                            .map(
-                              (city) => DropdownMenuItem(
-                                value: city,
-                                child: Text(city),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCity = value!;
-                      });
-                    },
-                    validator: (value) => value == null ? "Select City" : null,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(
-                        Icons.location_city,
-                        color: Colors.grey,
-                      ),
-                      labelText: "City",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Password field
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    validator:
-                        (value) =>
-                            value == null || value.isEmpty
-                                ? "Enter Password"
-                                : null,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock, color: Colors.grey),
-                      labelText: "Password",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Confirm Password field
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: true,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Confirm Password";
-                      }
-                      if (value != _passwordController.text) {
-                        return "Passwords do not match";
-                      }
-                      return null;
-                    },
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(
-                        Icons.lock_outline,
-                        color: Colors.grey,
-                      ),
-                      labelText: "Confirm Password",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Submit button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () async {
-                        if (_formKey.currentState!.validate()) {
-                          try {
-                            // Create user with email & password
-                            UserCredential userCredential = await FirebaseAuth
-                                .instance
-                                .createUserWithEmailAndPassword(
-                                  email: _emailController.text.trim(),
-                                  password: _passwordController.text.trim(),
-                                );
-
-                            // Success
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Account created successfully!"),
-                              ),
-                            );
-
-                            // Optional: Navigate to LoginPage or HomePage
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const LoginPage(),
-                              ),
-                            );
-                          } on FirebaseAuthException catch (e) {
-                            String message = "An error occurred";
-                            if (e.code == 'email-already-in-use') {
-                              message = "This email is already registered";
-                            } else if (e.code == 'weak-password') {
-                              message = "Password is too weak";
-                            } else if (e.code == 'invalid-email') {
-                              message = "Invalid email address";
-                            }
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text(message)));
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString())),
-                            );
-                          }
-                        }
-                      },
-
-                      child: const Text(
-                        "Sign Up",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Sign in link
-                  // Sign in link
-                  Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        // Action when the whole text is pressed
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LoginPage(),
-                          ),
-                        );
-                      },
-                      child: RichText(
-                        text: TextSpan(
-                          text: "Already have an account? ",
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 14,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: "Sign In",
-=======
                       // Title
                       Stack(
                         clipBehavior: Clip.none,
@@ -413,7 +94,6 @@ class _SignupPageState extends State<SignupPage> {
                             padding: EdgeInsets.only(left: iconSize * 2),
                             child: Text(
                               "Sign Up",
->>>>>>> 40c735af4a5446fe8114d61d2afaa6fb5712668b
                               style: TextStyle(
                                 fontSize: titleFontSize,
                                 color: const Color.fromARGB(255, 0, 0, 0),
@@ -450,13 +130,38 @@ class _SignupPageState extends State<SignupPage> {
                       // Input fields
                       _buildTextField("Full Name", Icons.person, inputFontSize),
                       SizedBox(height: spacing / 2),
-                      _buildTextField("Email", Icons.email, inputFontSize),
+                      _buildTextField(
+                        "Email",
+                        Icons.email,
+                        inputFontSize,
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Enter email";
+                          }
+                          if (!value.endsWith("@gmail.com")) {
+                            return "Email must end with @gmail.com";
+                          }
+                          return null;
+                        },
+                      ),
                       SizedBox(height: spacing / 2),
+
                       _buildTextField(
                         "Phone Number",
                         Icons.phone,
                         inputFontSize,
                         keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Enter phone number";
+                          }
+                          if (!RegExp(r"^05\d{8}$").hasMatch(value)) {
+                            return "Phone must start with 05 and be 10 digits";
+                          }
+                          return null;
+                        },
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -478,11 +183,34 @@ class _SignupPageState extends State<SignupPage> {
                             });
                           }
                         },
-                        validator:
-                            (value) =>
-                                value == null || value.isEmpty
-                                    ? "Enter Date of Birth"
-                                    : null,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Enter Date of Birth";
+                          }
+                          try {
+                            final parts = value.split("/");
+                            final dob = DateTime(
+                              int.parse(parts[2]),
+                              int.parse(parts[1]),
+                              int.parse(parts[0]),
+                            );
+                            final today = DateTime.now();
+                            final age =
+                                today.year -
+                                dob.year -
+                                ((today.month < dob.month ||
+                                        (today.month == dob.month &&
+                                            today.day < dob.day))
+                                    ? 1
+                                    : 0);
+                            if (age < 15) {
+                              return "You must be at least 15 years old";
+                            }
+                          } catch (e) {
+                            return "Invalid date format";
+                          }
+                          return null;
+                        },
                         decoration: InputDecoration(
                           prefixIcon: Icon(
                             Icons.calendar_today,
@@ -537,7 +265,10 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
+                        style: TextStyle(
+                          fontSize: inputFontSize,
+                          color: Colors.black,
+                        ),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -568,7 +299,10 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
+                        style: TextStyle(
+                          fontSize: inputFontSize,
+                          color: Colors.black,
+                        ),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -604,7 +338,10 @@ class _SignupPageState extends State<SignupPage> {
                             horizontal: 12,
                           ), // same height
                         ),
-                        style: TextStyle(fontSize: inputFontSize,  color: Colors.black),
+                        style: TextStyle(
+                          fontSize: inputFontSize,
+                          color: Colors.black,
+                        ),
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -614,6 +351,19 @@ class _SignupPageState extends State<SignupPage> {
                         Icons.lock,
                         inputFontSize,
                         isPassword: true,
+                        controller: _passwordController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Enter password";
+                          }
+                          // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+                          if (!RegExp(
+                            r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$',
+                          ).hasMatch(value)) {
+                            return "Password too weak (use upper, lower, number, special, 8+ chars)";
+                          }
+                          return null;
+                        },
                       ),
                       SizedBox(height: spacing / 2),
                       _buildTextField(
@@ -622,6 +372,15 @@ class _SignupPageState extends State<SignupPage> {
                         inputFontSize,
                         isPassword: true,
                         controller: _confirmPasswordController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Enter Confirm Password";
+                          }
+                          if (value != _passwordController.text) {
+                            return "Passwords do not match";
+                          }
+                          return null;
+                        },
                       ),
                       SizedBox(height: spacing),
 
@@ -644,15 +403,53 @@ class _SignupPageState extends State<SignupPage> {
                                 ),
                               ),
                             ),
-                            onPressed: () {
+                            onPressed: () async {
                               if (_formKey.currentState!.validate()) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      "Form submitted successfully!",
+                                try {
+                                  // Create user with email & password
+                                  UserCredential userCredential =
+                                      await FirebaseAuth.instance
+                                          .createUserWithEmailAndPassword(
+                                            email: _emailController.text.trim(),
+                                            password:
+                                                _passwordController.text.trim(),
+                                          );
+
+                                  // Success
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Account created successfully!",
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+
+                                  // Optional: Navigate to LoginPage or HomePage
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const LoginPage(),
+                                    ),
+                                  );
+                                } on FirebaseAuthException catch (e) {
+                                  print("FirebaseAuthException: ${e.code}");
+                                  String message;
+                                  if (e.code == 'email-already-in-use') {
+                                    message =
+                                        "This email is already registered";
+                                  } else if (e.code == 'weak-password') {
+                                    message = "Password is too weak";
+                                  } else if (e.code == 'invalid-email') {
+                                    message = "Invalid email address";
+                                  } else {
+                                    message =
+                                        e.message ??
+                                        "An unexpected error occurred";
+                                  }
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(message)),
+                                  );
+                                }
                               }
                             },
                             child: Text(
@@ -669,134 +466,6 @@ class _SignupPageState extends State<SignupPage> {
 
                       SizedBox(height: spacing),
 
-<<<<<<< HEAD
-                  // Social Buttons
-                  Column(
-                    children: [
-                      const Text(
-                        "Or Sign in with",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center, // Center all social icons
-                        children: [
-                          // Google
-                          IconButton(
-                            onPressed: () async {
-                              final user =
-                                  await AuthService().signInWithGoogle();
-                              if (user != null) {
-                                print("✅ Google login: ${user.displayName}");
-                                // You can navigate to your home page here
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => HomePage()),
-                                );
-                              } else {
-                                print("❌ Google login failed");
-                              }
-                            },
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.grey),
-                            ),
-                            icon: SvgPicture.string(
-                              '''
-                          <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 488 512">
-                            <path d="M488 261.8C488 403.3 391.1 504 
-                            248 504 110.8 504 0 393.2 0 256S110.8 
-                            8 248 8c66.8 0 123 24.5 166.3 
-                            64.9l-67.5 64.9C258.5 52.6 94.3 
-                            116.6 94.3 256c0 86.5 69.1 156.6 
-                            153.7 156.6 98.2 0 135-70.4 
-                            140.8-106.9H248v-85.3h236.1c2.3 
-                            12.7 3.9 24.9 3.9 41.4z"/>
-                          </svg>
-                          ''',
-                              width: 24,
-                              height: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-
-                          // Facebook
-                          IconButton(
-                            onPressed: () async {
-                              final user =
-                                  await AuthService().signInWithFacebook();
-                              if (user != null) {
-                                print("✅ Facebook login: ${user.displayName}");
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => HomePage()),
-                                );
-                              } else {
-                                print("❌ Facebook login failed");
-                              }
-                            },
-                            style: IconButton.styleFrom(
-                              backgroundColor: Color.fromARGB(
-                                255,
-                                0,
-                                0,
-                                0,
-                              ), // Facebook blue
-                            ),
-                            icon: SvgPicture.string(
-                              '''
-                        <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 320 512">
-                          <path fill="white" d="M279.14 288l14.22-92.66h-88.91V127.41c0-25.35 
-                          12.42-50.06 52.24-50.06h40.42V6.26S293.3 
-                          0 268.1 0c-73.22 0-121.07 44.38-121.07 
-                          124.72V195.3H86.41V288h60.62v224h92.66V288z"/>
-                        </svg>
-                        ''',
-                              width: 24,
-                              height: 24,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Terms & Conditions
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      "By signing up, you agree to our Terms & Conditions and Privacy Policy",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Color(0xFF49709c)),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Optional: Light/Dark images at the bottom
-                  Column(
-                    children: [
-                      Image.asset(
-                        'assets/dark.svg', // replace with your dark image path
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                      const SizedBox(height: 10),
-                      Image.asset(
-                        'assets/light.svg', // replace with your light image path
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ],
-                  ),
-                ],
-=======
                       // Sign in link
                       Center(
                         child: GestureDetector(
@@ -847,7 +516,24 @@ class _SignupPageState extends State<SignupPage> {
                             children: [
                               // Google
                               IconButton(
-                                onPressed: () {},
+                                onPressed: () async {
+                                  final user =
+                                      await AuthService().signInWithGoogle();
+                                  if (user != null) {
+                                    print(
+                                      "✅ Google login: ${user.displayName}",
+                                    );
+                                    // You can navigate to your home page here
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => HomePage(),
+                                      ),
+                                    );
+                                  } else {
+                                    print("❌ Google login failed");
+                                  }
+                                },
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   side: const BorderSide(
@@ -868,7 +554,23 @@ class _SignupPageState extends State<SignupPage> {
                               SizedBox(width: spacing / 1.5),
                               // facebook
                               IconButton(
-                                onPressed: () {},
+                                onPressed: () async {
+                                  final user =
+                                      await AuthService().signInWithFacebook();
+                                  if (user != null) {
+                                    print(
+                                      "✅ Facebook login: ${user.displayName}",
+                                    );
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => HomePage(),
+                                      ),
+                                    );
+                                  } else {
+                                    print("❌ Facebook login failed");
+                                  }
+                                },
                                 style: IconButton.styleFrom(
                                   backgroundColor: Color.fromARGB(
                                     255,
@@ -912,7 +614,6 @@ class _SignupPageState extends State<SignupPage> {
                     ],
                   ),
                 ),
->>>>>>> 40c735af4a5446fe8114d61d2afaa6fb5712668b
               ),
             ),
           ),
@@ -928,38 +629,32 @@ class _SignupPageState extends State<SignupPage> {
     bool isPassword = false,
     TextEditingController? controller,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator, // ✅ added validator
   }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
       keyboardType: keyboardType,
       validator:
+          validator ??
           (value) => value == null || value.isEmpty ? "Enter $label" : null,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey, size: fontSize * 1.2),
         labelText: label,
-        labelStyle: const TextStyle(
-          color: Colors.black54,
-        ), // Label color when not focused
+        labelStyle: const TextStyle(color: Colors.black54),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
-          borderSide: const BorderSide(
-            color: Colors.black, // Border color when focused
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: Colors.black, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 10,
           horizontal: 12,
         ),
       ),
-      style: TextStyle(
-        fontSize: fontSize,
-        color: Colors.black, // Text color
-      ),
+      style: TextStyle(fontSize: fontSize, color: Colors.black),
     );
   }
 }

@@ -23,37 +23,48 @@ class AuthService {
     return userCredential.user;
   }
 
-  // ✅ Google Login
+  // ✅ Google Sign-In (Android, iOS, Windows)
   Future<User?> signInWithGoogle() async {
-    final googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) return null;
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null; // user canceled
 
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-    final userCredential = await _auth.signInWithCredential(credential);
-    return userCredential.user;
-  }
-
-  // ✅ Facebook Login
-  Future<User?> signInWithFacebook() async {
-    final LoginResult result = await FacebookAuth.instance.login();
-
-    if (result.status == LoginStatus.success) {
-      final accessToken = result.accessToken;
-      final credential = FacebookAuthProvider.credential(accessToken!.token);
       final userCredential = await _auth.signInWithCredential(credential);
       return userCredential.user;
-    } else {
-      print("❌ Facebook login failed: ${result.status}");
+    } catch (e) {
+      print("❌ Google sign-in error: $e");
       return null;
     }
   }
 
-  // ✅ Logout
+  // ✅ Facebook Sign-In (Android/iOS only)
+  Future<User?> signInWithFacebook() async {
+    try {
+      final result = await FacebookAuth.instance.login();
+
+      if (result.status == LoginStatus.success) {
+        final accessToken = result.accessToken!;
+        final credential = FacebookAuthProvider.credential(accessToken.token);
+
+        final userCredential = await _auth.signInWithCredential(credential);
+        return userCredential.user;
+      } else {
+        print("❌ Facebook login failed: ${result.status}");
+        return null;
+      }
+    } catch (e) {
+      print("❌ Facebook sign-in error: $e");
+      return null;
+    }
+  }
+
+  // ✅ Logout from all providers
   Future<void> signOut() async {
     await _auth.signOut();
     await GoogleSignIn().signOut();
