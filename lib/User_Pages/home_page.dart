@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -59,38 +61,39 @@ class _HomePageState extends State<HomePage> {
 
         // 🔹 AppBar
         appBar: AppBar(
-  elevation: 0,
-  backgroundColor: Colors.grey[50],
-  centerTitle: true,
-  title: Row(
-    mainAxisSize: MainAxisSize.min, // keep them centered together
-    children: [
-      Image.asset(
-        "assets/logoImage.png",
-        width: logoSize,
-        height: logoSize,
-      ),
-      const SizedBox(width: 8), // space between logo and text
-      Text(
-        "Sport Brands",
-        style: TextStyle(
-          fontSize: w * 0.05,
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ],
-  ),
-
+          elevation: 0,
+          backgroundColor: Colors.grey[50],
+          centerTitle: true,
+          title: Row(
+            mainAxisSize: MainAxisSize.min, // keep them centered together
+            children: [
+              Image.asset(
+                "assets/logoImage.png",
+                width: logoSize,
+                height: logoSize,
+              ),
+              const SizedBox(width: 8), // space between logo and text
+              Text(
+                "Sport Brands",
+                style: TextStyle(
+                  fontSize: w * 0.05,
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
 
           actions: [
             IconButton(
-              onPressed: () {},
-              icon: Icon(
-                Icons.shopping_bag_outlined,
-                size: w * 0.07,
-                color: Colors.black,
-              ),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut(); // ✅ Sign out the user
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              },
+              icon: Icon(Icons.logout, size: w * 0.07, color: Colors.black),
             ),
           ],
         ),
@@ -175,18 +178,34 @@ class _HomePageState extends State<HomePage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Text("Men",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: w * 0.04)),
-                      Text("Women",
-                          style: TextStyle(
-                              color: Colors.grey, fontSize: w * 0.04)),
-                      Text("Kids",
-                          style: TextStyle(
-                              color: Colors.grey, fontSize: w * 0.04)),
-                      Text("Sports",
-                          style: TextStyle(
-                              color: Colors.grey, fontSize: w * 0.04)),
+                      Text(
+                        "Men",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: w * 0.04,
+                        ),
+                      ),
+                      Text(
+                        "Women",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: w * 0.04,
+                        ),
+                      ),
+                      Text(
+                        "Kids",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: w * 0.04,
+                        ),
+                      ),
+                      Text(
+                        "Sports",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: w * 0.04,
+                        ),
+                      ),
                     ],
                   ),
                 ),

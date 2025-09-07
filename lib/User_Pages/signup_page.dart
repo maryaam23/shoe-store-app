@@ -4,7 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
 import 'package:shoe_store_app/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_page.dart';
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -15,14 +18,41 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
+
+  // Controllers
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
+  // Dropdowns
   String? _selectedGender;
   String? _selectedCity;
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
+  bool _isLoading = false; // For loading indicator
+  String? _passwordError; // live validation feedback
+  String? _confirmPasswordError;
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) return "Please enter a password";
+    if (value.length < 8) return "Password must be at least 8 characters long";
+    if (value.length > 20) return "Password cannot exceed 20 characters";
+    if (!RegExp(r'[A-Z]').hasMatch(value))
+      return "Password must contain at least 1 uppercase letter";
+    if (!RegExp(r'[a-z]').hasMatch(value))
+      return "Password must contain at least 1 lowercase letter";
+    if (!RegExp(r'\d').hasMatch(value))
+      return "Password must contain at least 1 number";
+    if (!RegExp(r'[\W_]').hasMatch(value))
+      return "Password must contain at least 1 special character";
+    if (value.contains(' ')) return "Password cannot contain spaces";
+    return null;
+  }
 
   final List<String> _genders = ["Male", "Female", "Other"];
   final List<String> _cities = [
@@ -39,6 +69,42 @@ class _SignupPageState extends State<SignupPage> {
     "Tubas",
     "East Jerusalem",
   ];
+
+  // Helper function inside the state class
+  Future<bool> checkDomainExists(String email) async {
+    try {
+      final domain = email.split('@').last;
+
+      final url = Uri.parse('https://dns.google/resolve?name=$domain&type=MX');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['Answer'] != null;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // SnackBar helper
+  void showSnackBar(String message, {Color color = Colors.red}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Launch URL helper
+  void launchURL(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,8 +195,26 @@ class _SignupPageState extends State<SignupPage> {
                       SizedBox(height: spacing),
 
                       // Input fields
-                      _buildTextField("Full Name", Icons.person, inputFontSize),
+                      //name
+                      //Should not be empty.  Must contain only letters and spaces.  Minimum length (e.g., 3 characters)
+                      _buildTextField(
+                        "Full Name",
+                        Icons.person,
+                        inputFontSize,
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return "Enter your full name";
+                          if (!RegExp(r"^[a-zA-Z\s]+$").hasMatch(value)) {
+                            return "Name must contain only letters";
+                          }
+                          if (value.length < 3)
+                            return "Name must be at least 3 characters";
+                          return null;
+                        },
+                      ),
                       SizedBox(height: spacing / 2),
+
+                      //email
                       _buildTextField(
                         "Email",
                         Icons.email,
@@ -138,17 +222,25 @@ class _SignupPageState extends State<SignupPage> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
+                          if (value == null || value.isEmpty)
                             return "Enter email";
+
+                          // General email format check
+                          if (!RegExp(
+                            r"^[\w\.-]+@([\w-]+\.)+[a-zA-Z]{2,}$",
+                          ).hasMatch(value)) {
+                            return "Invalid email format";
                           }
-                          if (!value.endsWith("@gmail.com")) {
-                            return "Email must end with @gmail.com";
-                          }
+
+                          // Ensure it ends with .com
+                          if (!value.endsWith(".com"))
+                            return "Email must end with .com";
+
                           return null;
                         },
                       ),
-                      SizedBox(height: spacing / 2),
 
+                      SizedBox(height: spacing / 2),
 
                       _buildTextField(
                         "Phone Number",
@@ -196,7 +288,15 @@ class _SignupPageState extends State<SignupPage> {
                               int.parse(parts[1]),
                               int.parse(parts[0]),
                             );
+
                             final today = DateTime.now();
+
+                            // 🔹 Limit future dates
+                            if (dob.isAfter(today)) {
+                              return "Date of Birth cannot be in the future";
+                            }
+
+                            // 🔹 Minimum age check (>= 13)
                             final age =
                                 today.year -
                                 dob.year -
@@ -205,14 +305,16 @@ class _SignupPageState extends State<SignupPage> {
                                             today.day < dob.day))
                                     ? 1
                                     : 0);
-                            if (age < 15) {
-                              return "You must be at least 15 years old";
+
+                            if (age < 13) {
+                              return "You must be at least 13 years old";
                             }
                           } catch (e) {
                             return "Invalid date format";
                           }
                           return null;
                         },
+
                         decoration: InputDecoration(
                           prefixIcon: Icon(
                             Icons.calendar_today,
@@ -237,6 +339,7 @@ class _SignupPageState extends State<SignupPage> {
                       // Gender dropdown
                       DropdownButtonFormField<String>(
                         value: _selectedGender,
+                        hint: Text("Select Gender"),
                         items:
                             _genders
                                 .map(
@@ -271,7 +374,6 @@ class _SignupPageState extends State<SignupPage> {
                           fontSize: inputFontSize,
                           color: Colors.black,
                         ),
-                        
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -306,13 +408,13 @@ class _SignupPageState extends State<SignupPage> {
                           fontSize: inputFontSize,
                           color: Colors.black,
                         ),
-                        
                       ),
                       SizedBox(height: spacing / 2),
 
                       // City dropdown
                       DropdownButtonFormField<String>(
                         value: _selectedCity,
+                        hint: Text("Select City"),
                         items:
                             _cities
                                 .map(
@@ -346,7 +448,6 @@ class _SignupPageState extends State<SignupPage> {
                           fontSize: inputFontSize,
                           color: Colors.black,
                         ),
-                        
                       ),
                       SizedBox(height: spacing / 2),
 
@@ -357,19 +458,23 @@ class _SignupPageState extends State<SignupPage> {
                         inputFontSize,
                         isPassword: true,
                         controller: _passwordController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Enter password";
-                          }
-                          // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
-                          if (!RegExp(
-                            r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$',
-                          ).hasMatch(value)) {
-                            return "Password too weak (use upper, lower, number, special, 8+ chars)";
-                          }
-                          return null;
+                        validator: _validatePassword,
+                        passwordVisible: _passwordVisible,
+                        togglePasswordVisibility: () {
+                          setState(() {
+                            _passwordVisible = !_passwordVisible;
+                          });
                         },
+                        onChanged: (value) {
+                          setState(() {
+                            _passwordError = _validatePassword(
+                              value,
+                            ); // ✅ call function directly
+                          });
+                        },
+                        errorText: _passwordError,
                       ),
+
                       SizedBox(height: spacing / 2),
                       _buildTextField(
                         "Confirm Password",
@@ -386,7 +491,23 @@ class _SignupPageState extends State<SignupPage> {
                           }
                           return null;
                         },
+                        passwordVisible: _confirmPasswordVisible,
+                        togglePasswordVisibility: () {
+                          setState(() {
+                            _confirmPasswordVisible = !_confirmPasswordVisible;
+                          });
+                        },
+                        onChanged: (value) {
+                          setState(() {
+                            _confirmPasswordError =
+                                value != _passwordController.text
+                                    ? "Passwords do not match"
+                                    : null;
+                          });
+                        },
+                        errorText: _confirmPasswordError,
                       ),
+
                       SizedBox(height: spacing),
 
                       // Submit button
@@ -408,9 +529,23 @@ class _SignupPageState extends State<SignupPage> {
                                 ),
                               ),
                             ),
-                            
+
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
+                                setState(() {
+                                  _isLoading = true; // Show loading indicator
+                                });
+
+                                // Async domain check
+                                bool domainExists = await checkDomainExists(
+                                  _emailController.text.trim(),
+                                );
+                                if (!domainExists) {
+                                  setState(() => _isLoading = false);
+                                  showSnackBar("Email domain does not exist");
+                                  return;
+                                }
+
                                 try {
                                   // Create user with email & password
                                   UserCredential userCredential =
@@ -421,24 +556,22 @@ class _SignupPageState extends State<SignupPage> {
                                                 _passwordController.text.trim(),
                                           );
 
-                                  // Success
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "Account created successfully!",
-                                      ),
-                                    ),
+                                  setState(() => _isLoading = false);
+
+                                  showSnackBar(
+                                    "Account created successfully!",
+                                    color: Colors.green,
                                   );
 
-                                  // Optional: Navigate to LoginPage or HomePage
+                                  // Navigate to LoginPage
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const LoginPage(),
+                                      builder: (_) => const LoginPage(),
                                     ),
                                   );
                                 } on FirebaseAuthException catch (e) {
-                                  print("FirebaseAuthException: ${e.code}");
+                                  setState(() => _isLoading = false);
                                   String message;
                                   if (e.code == 'email-already-in-use') {
                                     message =
@@ -452,9 +585,7 @@ class _SignupPageState extends State<SignupPage> {
                                         e.message ??
                                         "An unexpected error occurred";
                                   }
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(message)),
-                                  );
+                                  showSnackBar(message);
                                 }
                               }
                             },
@@ -540,7 +671,7 @@ class _SignupPageState extends State<SignupPage> {
                                     print("❌ Google login failed");
                                   }
                                 },
-                                
+
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   side: const BorderSide(
@@ -578,7 +709,7 @@ class _SignupPageState extends State<SignupPage> {
                                     print("❌ Facebook login failed");
                                   }
                                 },
-                                
+
                                 style: IconButton.styleFrom(
                                   backgroundColor: Color.fromARGB(
                                     255,
@@ -609,15 +740,55 @@ class _SignupPageState extends State<SignupPage> {
                       // Terms & Conditions
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          "By signing up, you agree to our Terms & Conditions and Privacy Policy",
+                        child: RichText(
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF49709c),
+                          text: TextSpan(
+                            text: "By signing up, you agree to our ",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: "Terms & Conditions",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer:
+                                    TapGestureRecognizer()
+                                      ..onTap = () {
+                                        launchURL("https://your-terms-url.com");
+                                      },
+                              ),
+                              const TextSpan(
+                                text: " and ",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              TextSpan(
+                                text: "Privacy Policy",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer:
+                                    TapGestureRecognizer()
+                                      ..onTap = () {
+                                        launchURL(
+                                          "https://your-privacy-url.com",
+                                        );
+                                      },
+                              ),
+                            ],
                           ),
                         ),
                       ),
+
                       SizedBox(height: spacing),
                     ],
                   ),
@@ -637,37 +808,47 @@ class _SignupPageState extends State<SignupPage> {
     bool isPassword = false,
     TextEditingController? controller,
     TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator, // ✅ added validator
-    
+    String? Function(String?)? validator,
+    bool? passwordVisible,
+    Function()? togglePasswordVisibility,
+    String? errorText,
+    Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
-      obscureText: isPassword,
+      obscureText: isPassword ? !(passwordVisible ?? false) : false,
       keyboardType: keyboardType,
-      validator:
-          validator ??
-          validator ??
-          (value) => value == null || value.isEmpty ? "Enter $label" : null,
+      validator: validator,
+      onChanged: onChanged,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey, size: fontSize * 1.2),
         labelText: label,
         labelStyle: const TextStyle(color: Colors.black54),
-        
+        errorText: errorText,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
           borderSide: const BorderSide(color: Colors.black, width: 2),
-          
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 10,
           horizontal: 12,
         ),
+        suffixIcon:
+            isPassword
+                ? IconButton(
+                  icon: Icon(
+                    (passwordVisible ?? false)
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                  ),
+                  onPressed: togglePasswordVisibility,
+                )
+                : null,
       ),
       style: TextStyle(fontSize: fontSize, color: Colors.black),
-      
     );
   }
 }

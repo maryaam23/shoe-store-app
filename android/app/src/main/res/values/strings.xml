@@ -2,6 +2,6 @@
     <string name="app_name">shoe_store_app</string>
 
     <!-- Facebook App ID -->
-    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
-    <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
+    <string name="facebook_app_id">744888701718120</string>
+    <string name="fb_login_protocol_scheme">fb744888701718120</string>
 </resources>
