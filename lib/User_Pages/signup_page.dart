@@ -8,6 +8,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -547,7 +549,7 @@ class _SignupPageState extends State<SignupPage> {
                                 }
 
                                 try {
-                                  // Create user with email & password
+                                  // 1️⃣ Create user with email & password
                                   UserCredential userCredential =
                                       await FirebaseAuth.instance
                                           .createUserWithEmailAndPassword(
@@ -556,20 +558,46 @@ class _SignupPageState extends State<SignupPage> {
                                                 _passwordController.text.trim(),
                                           );
 
-                                  setState(() => _isLoading = false);
+                                  User? user = userCredential.user;
 
-                                  showSnackBar(
-                                    "Account created successfully!",
-                                    color: Colors.green,
-                                  );
+                                  if (user != null) {
+                                    // 2️⃣ Save additional info to Firestore
+                                    await FirebaseFirestore.instance
+                                        .collection("users")
+                                        .doc(user.uid)
+                                        .set({
+                                          "fullName":
+                                              _nameController.text.trim(),
+                                          "dob": _dobController.text.trim(),
+                                          "phone": _phoneController.text.trim(),
+                                          "gender": _selectedGender,
+                                          "city": _selectedCity,
+                                          "email": _emailController.text.trim(),
+                                          "country": "Palestine",
+                                          "createdAt":
+                                              FieldValue.serverTimestamp(),
+                                        });
 
-                                  // Navigate to LoginPage
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const LoginPage(),
-                                    ),
-                                  );
+                                    // 3️⃣ Optionally update Firebase Auth display name
+                                    await user.updateDisplayName(
+                                      _nameController.text.trim(),
+                                    );
+
+                                    setState(() => _isLoading = false);
+
+                                    showSnackBar(
+                                      "Account created successfully!",
+                                      color: Colors.green,
+                                    );
+
+                                    // 4️⃣ Navigate to HomePage (or LoginPage if you prefer)
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const LoginPage(),
+                                      ),
+                                    );
+                                  }
                                 } on FirebaseAuthException catch (e) {
                                   setState(() => _isLoading = false);
                                   String message;
@@ -589,6 +617,7 @@ class _SignupPageState extends State<SignupPage> {
                                 }
                               }
                             },
+
                             child: Text(
                               "Sign Up",
                               style: TextStyle(
