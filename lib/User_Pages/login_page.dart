@@ -217,46 +217,13 @@ class _LoginPageState extends State<LoginPage> {
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder:
-                                        (context) => AlertDialog(
-                                          title: const Text(
-                                            "Forgot Password",
-                                            style: TextStyle(
-                                              color: Color.fromRGBO(
-                                                1,
-                                                1,
-                                                1,
-                                                1,
-                                              ), // change to any color you want
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-
-                                          content: const Text(
-                                            "Password reset functionality is not implemented yet.",
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed:
-                                                  () => Navigator.pop(context),
-                                              child: const Text("Close"),
-                                            ),
-                                          ],
-                                        ),
-                                  );
+                                  _showForgotPasswordDialog(context);
                                 },
                                 child: Text(
                                   "Forgot Password?",
                                   style: TextStyle(
                                     fontSize: inputFontSize * 0.9,
-                                    color: const Color.fromARGB(
-                                      255,
-                                      0,
-                                      0,
-                                      0,
-                                    ), // change to any color you want
+                                    color: const Color.fromARGB(255, 0, 0, 0),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -461,6 +428,134 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showForgotPasswordDialog(BuildContext context) {
+    final TextEditingController emailController = TextEditingController();
+    final _formKey = GlobalKey<FormState>();
+
+    final size = MediaQuery.of(context).size;
+    final double titleFontSize = size.width * 0.045;
+    final double inputFontSize = size.width * 0.04;
+    final double buttonFontSize = size.width * 0.04;
+    final double iconSize = size.width * 0.06;
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text(
+              "Reset Password",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: titleFontSize,
+              ),
+            ),
+            content: SizedBox(
+              width: size.width * 0.8,
+              child: Form(
+                key: _formKey,
+                child: TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(
+                    fontSize: inputFontSize,
+                    color: Colors.black,
+                  ),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white, // ensures background is white
+                    labelText: "Enter your email",
+                    labelStyle: TextStyle(
+                      color: Colors.black,
+                      fontSize: inputFontSize * 0.95,
+                    ),
+                    floatingLabelStyle: TextStyle(
+                      color: Colors.black,
+                      fontSize: inputFontSize,
+                    ),
+                    hintStyle: TextStyle(color: Colors.black54),
+                    prefixIcon: Icon(
+                      Icons.email,
+                      size: iconSize,
+                      color: Colors.black,
+                    ),
+                    errorStyle: TextStyle(
+                      fontSize: inputFontSize * 0.8,
+                      height: 1.2,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: size.height * 0.025,
+                      horizontal: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                        color: Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Please enter email";
+                    }
+                    if (!RegExp(
+                      r"^[\w\.-]+@([\w-]+\.)+[a-zA-Z]{2,}$",
+                    ).hasMatch(value)) {
+                      return "Invalid email format";
+                    }
+                    if (!value.endsWith(".com")) {
+                      return "Email must end with .com";
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  "Cancel",
+                  style: TextStyle(fontSize: buttonFontSize),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    try {
+                      await FirebaseAuth.instance.sendPasswordResetEmail(
+                        email: emailController.text.trim(),
+                      );
+
+                      Navigator.pop(context); // Close dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Password reset link sent! Check your email inbox.",
+                          ),
+                        ),
+                      );
+                    } catch (e) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Error: ${e.toString()}")),
+                      );
+                    }
+                  }
+                },
+                child: Text(
+                  "Send Reset Link",
+                  style: TextStyle(fontSize: buttonFontSize),
+                ),
+              ),
+            ],
+          ),
     );
   }
 

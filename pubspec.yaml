@@ -31,21 +31,26 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Firebase
+  firebase_core: ^4.1.0
+  firebase_auth: ^6.0.2
+  cloud_firestore: ^6.0.1
+  firebase_storage: ^13.0.1
+
+  # Other dependencies
   hive: ^2.2.3
+  hive_flutter: ^1.1.0
   flutter_svg: ^2.2.1
-  firebase_core: ^4.1.0   # latest
-  firebase_auth: ^5.6.1   # if using auth
-  cloud_firestore: ^6.0.1 # if using Firestore DB
   google_sign_in: ^6.3.0
-  flutter_facebook_auth: ^6.2.0
+  flutter_facebook_auth: ^6.0.0
   email_validator: ^2.1.17
   cupertino_icons: ^1.0.8
-  hive_flutter: ^1.1.0
   google_fonts: ^6.3.1
   http: ^1.1.0
   url_launcher: ^6.1.10
-  image_picker: ^1.1.0  
-  firebase_storage: ^13.0.1
+  image_picker: ^1.1.0
+  
+
 
   
   

@@ -10,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
@@ -854,6 +853,11 @@ class _SignupPageState extends State<SignupPage> {
         labelText: label,
         labelStyle: const TextStyle(color: Colors.black54),
         errorText: errorText,
+        errorStyle: const TextStyle(
+          fontSize: 12, // 👈 smaller error font
+          height: 1.2, // 👈 adjust spacing
+          color: Colors.red,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(fontSize),
         ),

@@ -30,7 +30,6 @@ class _ProfilePageState extends State<ProfilePage> {
     "East Jerusalem",
   ];
 
-
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
@@ -163,6 +162,88 @@ class _ProfilePageState extends State<ProfilePage> {
                 "email",
               ),
               buildEditableInfoCard(w, "User ID", user.uid, user.uid, null),
+
+              // --- Extra Sections --- //
+              SizedBox(height: h * 0.02),
+
+              Card(
+                child: ListTile(
+                  leading: Icon(Icons.location_on, size: w * 0.07),
+                  title: Text(
+                    "Saved Addresses",
+                    style: TextStyle(fontSize: w * 0.045),
+                  ),
+                  trailing: Icon(Icons.arrow_forward_ios, size: w * 0.05),
+                  onTap: () {
+                    // 👉 Navigate to Saved Address Page
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     //builder: (context) => const SavedAddressPage(),
+                    //   ),
+                    // );
+                  },
+                ),
+              ),
+
+              Card(
+                child: ListTile(
+                  leading: Icon(Icons.credit_card, size: w * 0.07),
+                  title: Text(
+                    "Payment Methods",
+                    style: TextStyle(fontSize: w * 0.045),
+                  ),
+                  trailing: Icon(Icons.arrow_forward_ios, size: w * 0.05),
+                  onTap: () {
+                    // 👉 Navigate to Payment Methods Page
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     //builder: (context) => const PaymentMethodPage(),
+                    //   ),
+                    // );
+                  },
+                ),
+              ),
+
+              Card(
+                child: ListTile(
+                  leading: Icon(Icons.history, size: w * 0.07),
+                  title: Text(
+                    "Order History",
+                    style: TextStyle(fontSize: w * 0.045),
+                  ),
+                  trailing: Icon(Icons.arrow_forward_ios, size: w * 0.05),
+                  onTap: () {
+                    // 👉 Navigate to Order History Page
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     //builder: (context) => const OrderHistoryPage(),
+                    //   ),
+                    // );
+                  },
+                ),
+              ),
+
+              Card(
+                child: ListTile(
+                  leading: Icon(
+                    Icons.logout,
+                    size: w * 0.07,
+                    color: Colors.red,
+                  ),
+                  title: Text(
+                    "Logout",
+                    style: TextStyle(fontSize: w * 0.045, color: Colors.red),
+                  ),
+                  onTap: () async {
+                    await _auth.signOut();
+                    Navigator.pushReplacementNamed(context, "/login");
+                    // ⚠️ Make sure you have a login route in your app
+                  },
+                ),
+              ),
 
               SizedBox(height: h * 0.03),
 
@@ -350,10 +431,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   if (field == "fullName")
                     await _auth.currentUser?.updateDisplayName(ctrl.text);
                   if (field == "email")
-
-                  //I HAVE     PROOOOOOOOOLBLEM IN BEEEEEEEELOW LINEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                    //I HAVE     PROOOOOOOOOLBLEM IN BEEEEEEEELOW LINEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
                     //await _auth.currentUser?.updateEmail(ctrl.text);
-                  Navigator.pop(context);
+                    Navigator.pop(context);
                   setState(() {});
                 },
                 child: Text("Save", style: TextStyle(fontSize: w * 0.045)),
