@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -202,6 +203,7 @@ class _SignupPageState extends State<SignupPage> {
                         "Full Name",
                         Icons.person,
                         inputFontSize,
+                        controller: _nameController, 
                         validator: (value) {
                           if (value == null || value.isEmpty)
                             return "Enter your full name";
@@ -247,6 +249,7 @@ class _SignupPageState extends State<SignupPage> {
                         "Phone Number",
                         Icons.phone,
                         inputFontSize,
+                        controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -612,11 +615,25 @@ class _SignupPageState extends State<SignupPage> {
                                     // 5️⃣ Sign out until verification
                                     await FirebaseAuth.instance.signOut();
 
+<<<<<<< HEAD
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => const LoginPage(),
                                       ),
+=======
+                                    // ✅ Navigate to HomePage after short delay
+                                    Future.delayed(
+                                      const Duration(seconds: 1),
+                                      () {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const HomePage(),
+                                          ),
+                                        );
+                                      },
+>>>>>>> 10648a00bfeee2fcf0074e1227ddfc6777b3b1bf
                                     );
                                   }
                                 } on FirebaseAuthException catch (e) {
@@ -678,6 +695,19 @@ class _SignupPageState extends State<SignupPage> {
                                     fontWeight: FontWeight.bold,
                                     fontSize: inputFontSize,
                                   ),
+                                  recognizer:
+                                      TapGestureRecognizer()
+                                        ..onTap = () {
+                                          // Navigate to Sign In page
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) =>
+                                                      const LoginPage(), // your Sign In page
+                                            ),
+                                          );
+                                        },
                                 ),
                               ],
                             ),
@@ -876,7 +906,7 @@ class _SignupPageState extends State<SignupPage> {
         labelStyle: const TextStyle(color: Colors.black54),
         errorText: errorText,
         errorStyle: const TextStyle(
-          fontSize: 12, // 👈 smaller error font
+          fontSize: 8, // 👈 smaller error font
           height: 1.2, // 👈 adjust spacing
           color: Colors.red,
         ),

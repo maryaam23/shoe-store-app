@@ -1,210 +1,355 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'product_detailes_page.dart';
 
-class ProductDetailPage extends StatefulWidget {
-  const ProductDetailPage({super.key});
+enum CategoryType { shoes, accessories, clothes }
+enum ShoeBrand { nike, adidas, puma }
+enum ClothesType { top, bottom, suit }
 
-  @override
-  State<ProductDetailPage> createState() => _ProductDetailPageState();
+class Product {
+  final String name;
+  final String image;
+  final double price;
+  final CategoryType category;
+  final ShoeBrand? brand;
+  final ClothesType? clothesType;
+  final List<int>? sizes;
+  final List<Color>? colors;
+
+  Product({
+    required this.name,
+    required this.image,
+    required this.price,
+    required this.category,
+    this.brand,
+    this.clothesType,
+    this.sizes,
+    this.colors,
+  });
 }
 
-class _ProductDetailPageState extends State<ProductDetailPage> {
-  int selectedSize = 42;
-  Color selectedColor = Colors.black;
+class ProductPage extends StatefulWidget {
+  final String? selectedCategoryName; // From CategoriesPage
+  const ProductPage({super.key, this.selectedCategoryName});
 
-  final List<String> productImages = [
-    'assets/images/shoe1.png',
-    'assets/images/shoe2.png',
-    'assets/images/shoe3.png',
-  ];
+  @override
+  State<ProductPage> createState() => _ProductPageState();
+}
 
-  final List<int> sizes = [38, 39, 40, 41, 42, 43];
-  final List<Color> colors = [Colors.black, Colors.red, Colors.blue, Colors.green];
+class _ProductPageState extends State<ProductPage> {
+  List<Product> allProducts = [];
+  List<Product> filteredProducts = [];
+  CategoryType? selectedCategory;
+  ShoeBrand? selectedBrand;
+  ClothesType? selectedClothesType;
+
+  @override
+  void initState() {
+    super.initState();
+
+    allProducts = [
+      Product(
+        name: "Air Max 90",
+        image: "assets/images/shoe1.png",
+        price: 120,
+        category: CategoryType.shoes,
+        brand: ShoeBrand.nike,
+        sizes: [38, 39, 40, 41, 42],
+        colors: [Colors.black, Colors.red, Colors.blue],
+      ),
+      Product(
+        name: "Adidas Runner",
+        image: "assets/images/shoe2.png",
+        price: 100,
+        category: CategoryType.shoes,
+        brand: ShoeBrand.adidas,
+        sizes: [38, 39, 40, 41, 42],
+        colors: [Colors.black, Colors.green],
+      ),
+      Product(
+        name: "Formal Suit",
+        image: "assets/images/suit.png",
+        price: 200,
+        category: CategoryType.clothes,
+        clothesType: ClothesType.suit,
+      ),
+      Product(
+        name: "Leather Belt",
+        image: "assets/images/belt.png",
+        price: 30,
+        category: CategoryType.accessories,
+      ),
+    ];
+
+    // If navigated from CategoriesPage
+    if (widget.selectedCategoryName != null) {
+      switch (widget.selectedCategoryName!.toLowerCase()) {
+        case "shoes":
+          selectedCategory = CategoryType.shoes;
+          break;
+        case "clothes":
+          selectedCategory = CategoryType.clothes;
+          break;
+        case "accessories":
+          selectedCategory = CategoryType.accessories;
+          break;
+      }
+    }
+
+    filteredProducts = List.from(allProducts);
+    filterProducts();
+  }
+
+  void filterProducts() {
+    filteredProducts = allProducts.where((product) {
+      bool categoryMatch = selectedCategory == null || product.category == selectedCategory;
+
+      bool brandMatch = true;
+      if (selectedCategory == CategoryType.shoes && selectedBrand != null) {
+        brandMatch = product.brand == selectedBrand;
+      }
+
+      bool clothesMatch = true;
+      if (selectedCategory == CategoryType.clothes && selectedClothesType != null) {
+        clothesMatch = product.clothesType == selectedClothesType;
+      }
+
+      return categoryMatch && brandMatch && clothesMatch;
+    }).toList();
+
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final h = MediaQuery.of(context).size.height;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+        centerTitle: true,
+        title: Text(
+          "Products",
+          style: TextStyle(color: Colors.black, fontSize: w * 0.05),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.black),
-            onPressed: () {},
-          ),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.category, color: Colors.black),
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
+          )
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
+      endDrawer: Drawer(
+        child: ListView(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Product Image Carousel
-              SizedBox(
-                height: 250,
-                child: PageView.builder(
-                  itemCount: productImages.length,
-                  itemBuilder: (context, index) {
-                    return Image.asset(productImages[index], fit: BoxFit.contain);
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Title + Brand + Price
-              Text("Air Max 90", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold)),
-              Text("by Nike", style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[600])),
-              const SizedBox(height: 8),
-              Text("\$120.00", style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.black)),
-
-              const SizedBox(height: 20),
-
-              // Size Selector
-              Text("Select Size", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: sizes.map((size) {
-                  final isSelected = selectedSize == size;
-                  return ChoiceChip(
-                    label: Text(size.toString()),
-                    selected: isSelected,
-                    onSelected: (_) => setState(() => selectedSize = size),
-                    selectedColor: Colors.black,
-                    labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Color Selector
-              Text("Select Color", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              Row(
-                children: colors.map((color) {
-                  final isSelected = selectedColor == color;
-                  return GestureDetector(
-                    onTap: () => setState(() => selectedColor = color),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: isSelected ? Colors.black : Colors.transparent, width: 2),
-                      ),
-                      child: CircleAvatar(backgroundColor: color, radius: 18),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Stock + Delivery Info
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.check_circle, color: Colors.green),
-                    const SizedBox(width: 6),
-                    Text("In Stock", style: GoogleFonts.poppins(fontSize: 16)),
-                  ]),
-                  Row(children: [
-                    const Icon(Icons.local_shipping, color: Colors.blue),
-                    const SizedBox(width: 6),
-                    Text("Delivery: 2-4 days", style: GoogleFonts.poppins(fontSize: 16)),
-                  ]),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // Add to Cart Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () {},
-                  child: Text("Add to Cart", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Expandable Description
-              ExpansionTile(
-                title: Text("Description", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500)),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text("The Nike Air Max 90 stays true to its OG running roots with the iconic Waffle sole and stitched overlays, while bold colors add a fresh look.", style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700])),
-                  ),
-                ],
-              ),
-
-              // Expandable Product Details
-              ExpansionTile(
-                title: Text("Product Details", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500)),
-                children: [
-                  ListTile(title: Text("Material: Mesh, Leather", style: GoogleFonts.poppins(fontSize: 14))),
-                  ListTile(title: Text("Sole: Rubber", style: GoogleFonts.poppins(fontSize: 14))),
-                  ListTile(title: Text("Weight: 300g", style: GoogleFonts.poppins(fontSize: 14))),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // Review Summary
-              Text("Customer Reviews", style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text("4.5", style: GoogleFonts.poppins(fontSize: 40, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: List.generate(5, (i) => const Icon(Icons.star, color: Colors.amber, size: 20))),
-                      Text("200 Reviews", style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600])),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Customer Review Example
+          children: [
+            Text("Filter by Category",
+                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            ListTile(
+              title: const Text("All"),
+              onTap: () {
+                selectedCategory = null;
+                selectedBrand = null;
+                selectedClothesType = null;
+                filterProducts();
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text("Shoes"),
+              onTap: () {
+                selectedCategory = CategoryType.shoes;
+                selectedBrand = null;
+                selectedClothesType = null;
+                filterProducts();
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text("Clothes"),
+              onTap: () {
+                selectedCategory = CategoryType.clothes;
+                selectedBrand = null;
+                selectedClothesType = null;
+                filterProducts();
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text("Accessories"),
+              onTap: () {
+                selectedCategory = CategoryType.accessories;
+                selectedBrand = null;
+                selectedClothesType = null;
+                filterProducts();
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(height: 32),
+            if (selectedCategory == CategoryType.shoes) ...[
+              Text("Filter by Brand",
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
               ListTile(
-                leading: const CircleAvatar(backgroundImage: AssetImage("assets/images/user1.png")),
-                title: Text("John Doe", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                subtitle: Text("Great shoes! Very comfortable and stylish.", style: GoogleFonts.poppins()),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(5, (i) => const Icon(Icons.star, color: Colors.amber, size: 16)),
-                ),
+                title: const Text("Nike"),
+                onTap: () {
+                  selectedBrand = ShoeBrand.nike;
+                  filterProducts();
+                  Navigator.pop(context);
+                },
               ),
               ListTile(
-                leading: const CircleAvatar(backgroundImage: AssetImage("assets/images/user2.png")),
-                title: Text("Sarah Smith", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                subtitle: Text("Good value for the price.", style: GoogleFonts.poppins()),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(4, (i) => const Icon(Icons.star, color: Colors.amber, size: 16)),
-                ),
+                title: const Text("Adidas"),
+                onTap: () {
+                  selectedBrand = ShoeBrand.adidas;
+                  filterProducts();
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text("Puma"),
+                onTap: () {
+                  selectedBrand = ShoeBrand.puma;
+                  filterProducts();
+                  Navigator.pop(context);
+                },
               ),
             ],
-          ),
+            if (selectedCategory == CategoryType.clothes) ...[
+              Text("Filter by Type",
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+              ListTile(
+                title: const Text("Top"),
+                onTap: () {
+                  selectedClothesType = ClothesType.top;
+                  filterProducts();
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text("Bottom"),
+                onTap: () {
+                  selectedClothesType = ClothesType.bottom;
+                  filterProducts();
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text("Suit"),
+                onTap: () {
+                  selectedClothesType = ClothesType.suit;
+                  filterProducts();
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ],
         ),
+      ),
+      body: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: filteredProducts.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 0.65,
+        ),
+        itemBuilder: (context, index) {
+          final product = filteredProducts[index];
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ProductDetailPage(product: product)),
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade300,
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      child: Image.asset(product.image,
+                          fit: BoxFit.cover, width: double.infinity),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(product.name,
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text("\$${product.price}",
+                            style: GoogleFonts.poppins(
+                                color: Colors.black, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Wishlist Icon
+                            GestureDetector(
+                              onTap: () {
+                                // TODO: Add to wishlist logic
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                        color: Colors.grey.shade300,
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 3))
+                                  ],
+                                ),
+                                child: const Icon(Icons.favorite_border,
+                                    color: Colors.deepOrange, size: 20),
+                              ),
+                            ),
+                            // Add to Cart Button
+                            ElevatedButton(
+                              onPressed: () {
+                                // TODO: Add to cart logic
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepOrange,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                              ),
+                              child: const Icon(Icons.shopping_cart, size: 20),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
