@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'login_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -239,8 +240,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   onTap: () async {
                     await _auth.signOut();
-                    Navigator.pushReplacementNamed(context, "/login");
-                    // ⚠️ Make sure you have a login route in your app
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                      (route) => false,
+                    );
                   },
                 ),
               ),
