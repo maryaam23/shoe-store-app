@@ -577,19 +577,41 @@ class _SignupPageState extends State<SignupPage> {
                                               FieldValue.serverTimestamp(),
                                         });
 
-                                    // 3️⃣ Optionally update Firebase Auth display name
+                                    // 3️⃣ Update display name
                                     await user.updateDisplayName(
                                       _nameController.text.trim(),
                                     );
 
-                                    setState(() => _isLoading = false);
+                                    // 4️⃣ Send verification email using ActionCodeSettings
+                                    try {
+                                      await user.sendEmailVerification(
+                                        ActionCodeSettings(
+                                          url:
+                                              'https://sport-brands-42c8a.web.app',
+                                          handleCodeInApp: true,
+                                          androidPackageName:
+                                              'com.example.shoe_store_app',
+                                          androidInstallApp: true,
+                                          androidMinimumVersion: '21',
+                                          iOSBundleId:
+                                              'com.example.shoeStoreApp',
+                                        ),
+                                      );
 
-                                    showSnackBar(
-                                      "Account created successfully!",
-                                      color: Colors.green,
-                                    );
+                                      showSnackBar(
+                                        "Verification email sent! Please check your inbox.",
+                                        color: Colors.green,
+                                      );
+                                    } catch (e) {
+                                      print("❌ Verification error: $e");
+                                      showSnackBar(
+                                        "Failed to send verification email: $e",
+                                      );
+                                    }
 
-                                    // 4️⃣ Navigate to HomePage (or LoginPage if you prefer)
+                                    // 5️⃣ Sign out until verification
+                                    await FirebaseAuth.instance.signOut();
+
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
