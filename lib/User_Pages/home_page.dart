@@ -36,7 +36,7 @@ class _HomePageState extends State<HomePage> {
     "Sport Brands",
     "Cart Page",
     "Wishlist Page",
-    "Profile",
+    "My Profile",
   ];
 
   late final List<Widget> pages;
@@ -63,7 +63,7 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
         title: Text(
           pageTitles[_selectedIndex],
-          style: TextStyle(color: Colors.black, fontSize: w * 0.05),
+          style: TextStyle(color: Colors.black, fontSize: w * 0.05, fontWeight: FontWeight.bold),
         ),
         actions: _selectedIndex == 0
             ? [

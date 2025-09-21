@@ -50,6 +50,10 @@ dependencies:
   url_launcher: ^6.1.10
   image_picker: ^1.1.0
   shared_preferences: ^2.2.2
+  file_picker: ^10.3.3
+  geolocator: ^14.0.2
+  geocoding: ^2.1.0
+
   
 
 
