@@ -42,17 +42,21 @@ android {
 
 dependencies {
     // Firebase BoM ensures compatible versions
-    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+    implementation(platform("com.google.firebase:firebase-bom:latest.release"))
+
 
     // Example: Firebase Analytics
     implementation("com.google.firebase:firebase-analytics")
 
-    // Add other Firebase products if needed
-    // implementation("com.google.firebase:firebase-auth")
-    // implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-storage")
+
 }
+
 
 
 flutter {
     source = "../.."
 }
+
