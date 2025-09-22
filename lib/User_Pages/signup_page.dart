@@ -72,6 +72,8 @@ class _SignupPageState extends State<SignupPage> {
     "East Jerusalem",
   ];
 
+  String _selectedPayment = "Cash on Delivery"; // default
+
   // Helper function inside the state class
   Future<bool> checkDomainExists(String email) async {
     try {
@@ -203,7 +205,7 @@ class _SignupPageState extends State<SignupPage> {
                         "Full Name",
                         Icons.person,
                         inputFontSize,
-                        controller: _nameController, 
+                        controller: _nameController,
                         validator: (value) {
                           if (value == null || value.isEmpty)
                             return "Enter your full name";
@@ -563,7 +565,24 @@ class _SignupPageState extends State<SignupPage> {
                                   User? user = userCredential.user;
 
                                   if (user != null) {
-                                    // 2️⃣ Save additional info to Firestore
+                                    // 1️⃣ Build payment method dynamically
+                                    Map<String, dynamic> paymentMethod;
+
+                                    if (_selectedPayment == "Visa") {
+                                      paymentMethod = {
+                                        "type": "Visa",
+                                        "name": null,
+                                        "cardNumber": null,
+                                        "expiry": null,
+                                        "cvv": null,
+                                      };
+                                    } else {
+                                      paymentMethod = {
+                                        "type": "Cash on Delivery",
+                                      };
+                                    }
+
+                                    // 2️⃣ Save user info to Firestore
                                     await FirebaseFirestore.instance
                                         .collection("users")
                                         .doc(user.uid)
@@ -578,6 +597,14 @@ class _SignupPageState extends State<SignupPage> {
                                           "country": "Palestine",
                                           "createdAt":
                                               FieldValue.serverTimestamp(),
+                                          "photoURL": null,
+                                          "selectedPaymentMethod":
+                                              paymentMethod,
+                                          "savedAddress": {
+                                            "latitude": null,
+                                            "longitude": null,
+                                            "address": "No address saved",
+                                          },
                                         });
 
                                     // 3️⃣ Optionally update Firebase Auth display name

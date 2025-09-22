@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'login_page.dart';
 
@@ -41,16 +42,24 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     final user = _auth.currentUser;
     if (user != null) {
-      FirebaseFirestore.instance.collection("users").doc(user.uid).get().then((
-        snapshot,
-      ) {
-        final data = snapshot.data();
-        if (data != null && mounted) {
-          setState(() {
-            selectedPayment = data["selectedPaymentMethod"];
+      FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get()
+          .then((snapshot) {
+            final data = snapshot.data();
+            if (data != null && mounted) {
+              setState(() {
+                selectedPayment = data["selectedPaymentMethod"];
+              });
+              debugPrint(
+                "Initial selectedPayment loaded: $selectedPayment",
+              ); // ✅ Debug
+            }
+          })
+          .catchError((e) {
+            debugPrint("Error loading user data in initState: $e");
           });
-        }
-      });
     }
   }
 
@@ -78,6 +87,8 @@ class _ProfilePageState extends State<ProfilePage> {
         Map<String, dynamic>? userData =
             snapshot.data!.data() as Map<String, dynamic>?;
 
+        print("DEBUG: StreamBuilder userData: $userData");
+
         // ✅ Do NOT overwrite selectedPayment here
 
         return SingleChildScrollView(
@@ -85,143 +96,351 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Profile Picture
+              // Profile Picture with trendy design
               Stack(
                 children: [
-                  CircleAvatar(
-                    radius: w * 0.15,
-                    backgroundImage:
-                        userData?["photoURL"] != null
-                            ? (userData!["photoURL"].toString().startsWith(
-                                  "http",
-                                )
-                                ? NetworkImage(userData["photoURL"])
-                                : FileImage(File(userData["photoURL"]))
-                                    as ImageProvider)
-                            : const AssetImage("assets/logo.jpg"),
+                  // Outer gradient border + shadow
+                  Container(
+                    width: w * 0.42,
+                    height: w * 0.42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Colors.blueAccent, Colors.purpleAccent],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: w * 0.2,
+                      backgroundColor: Colors.white,
+                      backgroundImage:
+                          userData?["photoURL"] != null
+                              ? (userData!["photoURL"].toString().startsWith(
+                                    "http",
+                                  )
+                                  ? NetworkImage(userData["photoURL"])
+                                  : FileImage(File(userData["photoURL"]))
+                                      as ImageProvider)
+                              : const AssetImage("assets/logo.jpg"),
+                    ),
                   ),
 
+                  // Gradient overlay for modern effect
+                  Container(
+                    width: w * 0.42,
+                    height: w * 0.42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Colors.transparent, Colors.black26],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+
+                  // Camera button with double-layer & neumorphism style
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: InkWell(
+                    child: GestureDetector(
                       onTap: () => _showImageChoiceDialog(user),
-                      child: CircleAvatar(
-                        radius: w * 0.05,
-                        backgroundColor: Colors.black54,
+                      child: Container(
+                        width: w * 0.1,
+                        height: w * 0.1,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: Offset(2, 2),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: w * 0.05,
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            220,
+                            217,
+                            217,
+                          ),
+                          child: Icon(
+                            Icons.camera_alt,
+                            color: const Color.fromARGB(255, 0, 0, 0),
+                            size: w * 0.05,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: h * 0.02),
+              //------------------------------------------------------
+              // Full Name
+              // Full Name Card under profile picture
+              Container(
+                margin: EdgeInsets.only(top: h * 0.02),
+                padding: EdgeInsets.symmetric(
+                  vertical: h * 0.015,
+                  horizontal: w * 0.04,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color.fromARGB(255, 81, 143, 251).withOpacity(0.8),
+                      const Color.fromARGB(255, 174, 191, 241).withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        userData?["fullName"] ?? user.displayName ?? "No Name",
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.raleway(
+                          fontSize: w * 0.055,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: w * 0.03),
+                    // Neumorphic-style edit button
+                    GestureDetector(
+                      onTap:
+                          () => _editFieldDialog(
+                            user.uid,
+                            "fullName",
+                            "Full Name",
+                            userData?["fullName"] ?? "",
+                            w,
+                          ),
+                      child: Container(
+                        padding: EdgeInsets.all(w * 0.015),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              offset: Offset(2, 2),
+                              blurRadius: 4,
+                            ),
+                            BoxShadow(
+                              color: Colors.white,
+                              offset: Offset(-2, -2),
+                              blurRadius: 1,
+                            ),
+                          ],
+                        ),
                         child: Icon(
                           Icons.edit,
-                          color: Colors.white,
+                          color: Colors.blueAccent,
                           size: w * 0.05,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              SizedBox(height: h * 0.02),
 
-              // Full Name
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              SizedBox(height: h * 0.01),
+              //------------------------------------------------------------------------
+              // Email (fixed, non-editable)
+              // Info Cards Section
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    userData?["fullName"] ?? user.displayName ?? "No Name",
-                    style: TextStyle(
-                      fontSize: w * 0.06,
-                      fontWeight: FontWeight.bold,
+                  // Email (non-editable)
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: h * 0.008),
+                    padding: EdgeInsets.symmetric(
+                      vertical: h * 0.015,
+                      horizontal: w * 0.04,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 5,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Email",
+                          style: GoogleFonts.merriweather(
+                            fontSize: w * 0.04,
+                            fontWeight: FontWeight.w800,
+                            color: const Color.fromARGB(255, 0, 0, 0),
+                          ),
+                        ),
+                        SizedBox(height: h * 0.005),
+                        Text(
+                          userData?["email"] ?? user.email ?? "-",
+                          style: GoogleFonts.openSans(
+                            fontSize: w * 0.045,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(width: w * 0.02),
-                  IconButton(
-                    icon: Icon(Icons.edit, size: w * 0.06),
-                    onPressed:
-                        () => _editFieldDialog(
-                          user.uid,
-                          "fullName",
-                          "Full Name",
-                          userData?["fullName"] ?? "",
-                          w,
-                        ),
+
+                  // Phone
+                  buildEditableInfoCardModern(
+                    w,
+                    h,
+                    "Phone",
+                    userData?["phone"] ?? "-",
+                    user.uid,
+                    "phone",
+                  ),
+
+                  // Date of Birth
+                  buildEditableInfoCardModern(
+                    w,
+                    h,
+                    "Date of Birth",
+                    userData?["dob"] ?? "-",
+                    user.uid,
+                    "dob",
+                  ),
+
+                  // Gender
+                  buildEditableInfoCardModern(
+                    w,
+                    h,
+                    "Gender",
+                    userData?["gender"] ?? "-",
+                    user.uid,
+                    "gender",
+                  ),
+
+                  // City
+                  buildEditableInfoCardModern(
+                    w,
+                    h,
+                    "City",
+                    userData?["city"] ?? "-",
+                    user.uid,
+                    "city",
                   ),
                 ],
-              ),
-              SizedBox(height: h * 0.01),
-
-              // Email (fixed, non-editable)
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.email, size: w * 0.07),
-                  title: Text("Email", style: TextStyle(fontSize: w * 0.045)),
-                  subtitle: Text(
-                    userData?["email"] ?? user.email ?? "-",
-                    style: TextStyle(fontSize: w * 0.04),
-                  ),
-                ),
-              ),
-              SizedBox(height: h * 0.03),
-
-              // Info Cards
-              buildEditableInfoCard(
-                w,
-                "Phone",
-                userData?["phone"] ?? "-",
-                user.uid,
-                "phone",
-              ),
-              buildEditableInfoCard(
-                w,
-                "Date of Birth",
-                userData?["dob"] ?? "-",
-                user.uid,
-                "dob",
-              ),
-              buildEditableInfoCard(
-                w,
-                "Gender",
-                userData?["gender"] ?? "-",
-                user.uid,
-                "gender",
-              ),
-              buildEditableInfoCard(
-                w,
-                "City",
-                userData?["city"] ?? "-",
-                user.uid,
-                "city",
               ),
 
               SizedBox(height: h * 0.02),
 
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.location_on, size: w * 0.07),
-                  title: Text(
-                    "Saved Address",
-                    style: TextStyle(fontSize: w * 0.045),
-                  ),
-                  subtitle: Text(
-                    userData?["savedAddress"]?["address"] ?? "No address saved",
-                    style: TextStyle(fontSize: w * 0.04),
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(Icons.add_location_alt, size: w * 0.06),
-                    onPressed: () => _saveCurrentLocation(user),
-                  ),
+              // Saved Address
+              Container(
+                margin: EdgeInsets.symmetric(vertical: h * 0.008),
+                padding: EdgeInsets.symmetric(
+                  vertical: h * 0.02,
+                  horizontal: w * 0.04,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Text column wrapped in Expanded
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Saved Address",
+                            style: GoogleFonts.merriweather(
+                              fontSize: w * 0.045,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: h * 0.005),
+                          Text(
+                            userData?["savedAddress"]?["address"] ??
+                                "No address saved",
+                            style: GoogleFonts.openSans(
+                              fontSize: w * 0.04,
+                              color: Colors.black,
+                            ),
+                            softWrap: true,
+                            overflow: TextOverflow.visible,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: w * 0.02),
+                    IconButton(
+                      icon: Icon(Icons.add_location_alt, size: w * 0.06),
+                      onPressed: () => _saveCurrentLocation(user),
+                    ),
+                  ],
                 ),
               ),
 
-              Card(
+              // Payment Methods
+              Container(
+                margin: EdgeInsets.symmetric(vertical: h * 0.008),
+                padding: EdgeInsets.symmetric(
+                  vertical: h * 0.015,
+                  horizontal: w * 0.04,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ListTile(
-                      leading: Icon(Icons.credit_card, size: w * 0.07),
-                      title: Text(
-                        "Payment Methods",
-                        style: TextStyle(fontSize: w * 0.045),
-                      ),
-                      trailing: Icon(Icons.arrow_forward_ios, size: w * 0.05),
+                    GestureDetector(
                       onTap: () async {
                         final result = await _showPaymentMethodsDialog(
                           user.uid,
@@ -229,29 +448,39 @@ class _ProfilePageState extends State<ProfilePage> {
                           h,
                         );
                         if (result != null) {
+                          print("DEBUG: Payment method selected: $result");
                           setState(() {
-                            selectedPayment = result; // update UI immediately
+                            selectedPayment = result; // update UI
                           });
                         }
                       },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Payment Methods",
+                            style: GoogleFonts.merriweather(
+                              fontSize: w * 0.045,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios, size: w * 0.05),
+                        ],
+                      ),
                     ),
-
-                    // Display chosen payment method below ListTile
                     if (selectedPayment != null)
                       Padding(
-                        padding: EdgeInsets.only(
-                          left: w * 0.04,
-                          bottom: h * 0.01,
-                        ),
+                        padding: EdgeInsets.only(top: h * 0.01),
                         child: Text(
                           selectedPayment is String
-                              ? selectedPayment // simply "Cash on Delivery"
+                              ? selectedPayment
                               : selectedPayment["type"] == "Visa"
                               ? "Visa - ${_maskCardNumber(selectedPayment["cardNumber"])}"
-                              : selectedPayment["type"], // fallback if other type
-                          style: TextStyle(
+                              : selectedPayment["type"],
+                          style: GoogleFonts.openSans(
                             fontSize: w * 0.04,
-                            color: Colors.grey[700],
+                            color: Colors.black87,
                           ),
                         ),
                       ),
@@ -259,51 +488,133 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
 
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.history, size: w * 0.07),
-                  title: Text(
-                    "Order History",
-                    style: TextStyle(fontSize: w * 0.045),
-                  ),
-                  trailing: Icon(Icons.arrow_forward_ios, size: w * 0.05),
+              // Order History
+              Container(
+                margin: EdgeInsets.symmetric(vertical: h * 0.008),
+                padding: EdgeInsets.symmetric(
+                  vertical: h * 0.015,
+                  horizontal: w * 0.04,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Order History",
+                      style: GoogleFonts.merriweather(
+                        fontSize: w * 0.045,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, size: w * 0.05),
+                  ],
                 ),
               ),
-              Card(
-                child: ListTile(
-                  leading: Icon(
-                    Icons.logout,
-                    size: w * 0.07,
-                    color: Colors.red,
-                  ),
-                  title: Text(
-                    "Logout",
-                    style: TextStyle(fontSize: w * 0.045, color: Colors.red),
-                  ),
+
+              // Logout
+              Container(
+                margin: EdgeInsets.symmetric(vertical: h * 0.008),
+                padding: EdgeInsets.symmetric(
+                  vertical: h * 0.015,
+                  horizontal: w * 0.04,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: GestureDetector(
                   onTap: () async {
                     await _auth.signOut();
+                    print("DEBUG: User logged out");
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const LoginPage()),
                       (route) => false,
                     );
                   },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.logout,
+                        size: w * 0.07,
+                        color: const Color.fromARGB(255, 255, 17, 1),
+                      ),
+                      SizedBox(width: w * 0.04),
+                      Text(
+                        "Logout",
+                        style: TextStyle(
+                          fontSize: w * 0.045,
+                          color: const Color.fromARGB(255, 246, 18, 2),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
+              // Change Password Button
               SizedBox(height: h * 0.03),
-
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
+              // Change Password Button - Modern Neumorphic Style
+              SizedBox(height: h * 0.03),
+              GestureDetector(
+                onTap: () => _showChangePasswordDialog(user.email ?? "", w, h),
+                child: Container(
                   padding: EdgeInsets.symmetric(
-                    vertical: h * 0.015,
-                    horizontal: w * 0.03,
+                    vertical: h * 0.018,
+                    horizontal: w * 0.06,
                   ),
-                  textStyle: TextStyle(fontSize: w * 0.045),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        offset: Offset(4, 4),
+                        blurRadius: 8,
+                      ),
+                      BoxShadow(
+                        color: Colors.white,
+                        offset: Offset(-4, -4),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock, color: Colors.black87, size: w * 0.06),
+                      SizedBox(width: w * 0.03),
+                      Text(
+                        "Change Password",
+                        style: GoogleFonts.merriweather(
+                          fontSize: w * 0.045,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                onPressed:
-                    () => _showChangePasswordDialog(user.email ?? "", w, h),
-                icon: const Icon(Icons.lock),
-                label: const Text("Change Password"),
               ),
             ],
           ),
@@ -319,43 +630,70 @@ class _ProfilePageState extends State<ProfilePage> {
     return cardNumber;
   }
 
-  Widget buildEditableInfoCard(
+  Widget buildEditableInfoCardModern(
     double w,
-    String title,
-    String value,
-    String uid,
-    String? field,
+    double h,
+    String fieldName,
+    String fieldValue,
+    String userId,
+    String fieldKey,
   ) {
-    return Card(
-      child: ListTile(
-        leading: Icon(_getIcon(title), size: w * 0.07),
-        title: Text(title, style: TextStyle(fontSize: w * 0.045)),
-        subtitle: Text(value, style: TextStyle(fontSize: w * 0.04)),
-        trailing:
-            field != null
-                ? IconButton(
-                  icon: Icon(Icons.edit, size: w * 0.06),
-                  onPressed:
-                      () => _editFieldDialog(uid, field, title, value, w),
-                )
-                : null,
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: h * 0.008),
+      padding: EdgeInsets.symmetric(vertical: h * 0.015, horizontal: w * 0.04),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 5, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                fieldName,
+                style: GoogleFonts.merriweather(
+                  fontSize: w * 0.04,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: h * 0.005),
+              Text(
+                fieldValue,
+                style: GoogleFonts.openSans(
+                  fontSize: w * 0.045,
+                  fontWeight: FontWeight.normal,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+          GestureDetector(
+            onTap:
+                () => _editFieldDialog(
+                  userId,
+                  fieldKey,
+                  fieldName,
+                  fieldValue,
+                  w,
+                ),
+            child: Container(
+              padding: EdgeInsets.all(w * 0.012),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black12,
+              ),
+              child: Icon(Icons.edit, size: w * 0.05, color: Colors.black87),
+            ),
+          ),
+        ],
       ),
     );
-  }
-
-  IconData _getIcon(String title) {
-    switch (title) {
-      case "Phone":
-        return Icons.phone;
-      case "Date of Birth":
-        return Icons.cake;
-      case "Gender":
-        return Icons.person;
-      case "City":
-        return Icons.location_city;
-      default:
-        return Icons.info;
-    }
   }
 
   void _showImageChoiceDialog(User user) {
@@ -419,7 +757,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (result == null) {
         debugPrint("User canceled the picker");
-        return; // user canceled
+        return print("DEBUG: User canceled file picker"); // user canceled
       }
 
       String? path = result.files.single.path;
@@ -497,7 +835,14 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text("Edit $title", style: TextStyle(fontSize: w * 0.05)),
+            title: Text(
+              "Edit $title",
+              style: GoogleFonts.merriweather(
+                fontSize: w * 0.05,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
             content:
                 field == "dob"
                     ? InkWell(
@@ -660,6 +1005,7 @@ class _ProfilePageState extends State<ProfilePage> {
           },
         },
       );
+      print("DEBUG: Address saved: $address");
 
       ScaffoldMessenger.of(
         context,
@@ -710,7 +1056,11 @@ class _ProfilePageState extends State<ProfilePage> {
               return AlertDialog(
                 title: Text(
                   "Select Payment Method",
-                  style: TextStyle(fontSize: w * 0.05),
+                  style: GoogleFonts.merriweather(
+                    fontSize: w * 0.05,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
                 ),
                 content: SingleChildScrollView(
                   child: Column(
@@ -719,14 +1069,28 @@ class _ProfilePageState extends State<ProfilePage> {
                       RadioListTile<String>(
                         value: "Cash on Delivery",
                         groupValue: selectedMethod,
-                        title: const Text("Cash on Delivery"),
+                        title: Text(
+                          "Cash on Delivery",
+                          style: GoogleFonts.merriweather(
+                            fontSize: w * 0.045,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
                         onChanged:
                             (val) => setState(() => selectedMethod = val),
                       ),
                       RadioListTile<String>(
                         value: "Visa",
                         groupValue: selectedMethod,
-                        title: const Text("Visa"),
+                        title: Text(
+                          "Visa",
+                          style: GoogleFonts.merriweather(
+                            fontSize: w * 0.045,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
                         onChanged:
                             (val) => setState(() => selectedMethod = val),
                       ),
@@ -735,16 +1099,36 @@ class _ProfilePageState extends State<ProfilePage> {
                           children: [
                             TextField(
                               controller: nameCtrl,
-                              decoration: const InputDecoration(
+                              style: GoogleFonts.merriweather(
+                                fontSize: w * 0.045,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
+                              decoration: InputDecoration(
                                 labelText: "Card holder full name",
+                                labelStyle: GoogleFonts.merriweather(
+                                  fontSize: w * 0.045,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black54,
+                                ),
                               ),
                             ),
                             SizedBox(height: h * 0.015),
                             TextField(
                               controller: cardNumberCtrl,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
+                              style: GoogleFonts.merriweather(
+                                fontSize: w * 0.045,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
+                              decoration: InputDecoration(
                                 labelText: "Card Number",
+                                labelStyle: GoogleFonts.merriweather(
+                                  fontSize: w * 0.045,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black54,
+                                ),
                               ),
                             ),
                             SizedBox(height: h * 0.015),
@@ -753,9 +1137,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                 Expanded(
                                   child: TextField(
                                     controller: expiryCtrl,
-                                    decoration: const InputDecoration(
+                                    style: GoogleFonts.merriweather(
+                                      fontSize: w * 0.045,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black87,
+                                    ),
+                                    decoration: InputDecoration(
                                       labelText: "Expiry Date",
                                       hintText: "MM/YY",
+                                      labelStyle: GoogleFonts.merriweather(
+                                        fontSize: w * 0.045,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black54,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -763,8 +1157,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                 Expanded(
                                   child: TextField(
                                     controller: cvvCtrl,
-                                    decoration: const InputDecoration(
+                                    style: GoogleFonts.merriweather(
+                                      fontSize: w * 0.045,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black87,
+                                    ),
+                                    decoration: InputDecoration(
                                       labelText: "CVV",
+                                      labelStyle: GoogleFonts.merriweather(
+                                        fontSize: w * 0.045,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black54,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -777,10 +1181,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(context, null),
                     child: Text(
                       "Cancel",
-                      style: TextStyle(fontSize: w * 0.045),
+                      style: GoogleFonts.merriweather(
+                        fontSize: w * 0.045,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
+                      ),
                     ),
                   ),
                   ElevatedButton(
@@ -812,13 +1220,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       }
 
                       try {
-                        // 1️⃣ Update Firestore first
                         await userDoc.update({
                           "selectedPaymentMethod": newMethod,
                         });
-
-                        // 2️⃣ Pop the dialog with result AFTER update
-                        Navigator.pop(context);
+                        print("DEBUG: Payment method saved: $newMethod");
+                        Navigator.pop(context, newMethod);
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -827,7 +1233,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         );
                       }
                     },
-                    child: Text("Save", style: TextStyle(fontSize: w * 0.045)),
+                    child: Text(
+                      "Save",
+                      style: GoogleFonts.merriweather(
+                        fontSize: w * 0.045,
+                        fontWeight: FontWeight.w700,
+                        color: const Color.fromARGB(255, 0, 0, 0),
+                      ),
+                    ),
                   ),
                 ],
               );
@@ -835,7 +1248,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
     );
 
-    return result; // the method the user selected
+    return result;
   }
 
   //--------------------------------------------------------------------------------------------------------------------------------

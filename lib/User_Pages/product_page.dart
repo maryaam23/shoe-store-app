@@ -1,22 +1,21 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'product_detailes_page.dart';
-
-enum CategoryType { shoes, accessories, clothes }
-enum ShoeBrand { nike, adidas, puma }
-enum ClothesType { top, bottom, suit }
-
+// Product Model
 class Product {
+  final String id;
   final String name;
   final String image;
   final double price;
-  final CategoryType category;
-  final ShoeBrand? brand;
-  final ClothesType? clothesType;
+  final String category;
+  final String? brand;
+  final String? clothesType;
   final List<int>? sizes;
   final List<Color>? colors;
 
   Product({
+    required this.id,
     required this.name,
     required this.image,
     required this.price,
@@ -26,328 +25,121 @@ class Product {
     this.sizes,
     this.colors,
   });
-}
 
-class ProductPage extends StatefulWidget {
-  final String? selectedCategoryName; // From CategoriesPage
-  const ProductPage({super.key, this.selectedCategoryName});
+  factory Product.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
 
-  @override
-  State<ProductPage> createState() => _ProductPageState();
-}
-
-class _ProductPageState extends State<ProductPage> {
-  List<Product> allProducts = [];
-  List<Product> filteredProducts = [];
-  CategoryType? selectedCategory;
-  ShoeBrand? selectedBrand;
-  ClothesType? selectedClothesType;
-
-  @override
-  void initState() {
-    super.initState();
-
-    allProducts = [
-      Product(
-        name: "Air Max 90",
-        image: "assets/images/shoe1.png",
-        price: 120,
-        category: CategoryType.shoes,
-        brand: ShoeBrand.nike,
-        sizes: [38, 39, 40, 41, 42],
-        colors: [Colors.black, Colors.red, Colors.blue],
-      ),
-      Product(
-        name: "Adidas Runner",
-        image: "assets/images/shoe2.png",
-        price: 100,
-        category: CategoryType.shoes,
-        brand: ShoeBrand.adidas,
-        sizes: [38, 39, 40, 41, 42],
-        colors: [Colors.black, Colors.green],
-      ),
-      Product(
-        name: "Formal Suit",
-        image: "assets/images/suit.png",
-        price: 200,
-        category: CategoryType.clothes,
-        clothesType: ClothesType.suit,
-      ),
-      Product(
-        name: "Leather Belt",
-        image: "assets/images/belt.png",
-        price: 30,
-        category: CategoryType.accessories,
-      ),
-    ];
-
-    // If navigated from CategoriesPage
-    if (widget.selectedCategoryName != null) {
-      switch (widget.selectedCategoryName!.toLowerCase()) {
-        case "shoes":
-          selectedCategory = CategoryType.shoes;
-          break;
-        case "clothes":
-          selectedCategory = CategoryType.clothes;
-          break;
-        case "accessories":
-          selectedCategory = CategoryType.accessories;
-          break;
-      }
+    // Clean strings (remove extra quotes if present)
+    String cleanString(String? s) {
+      if (s == null) return '';
+      return s.replaceAll('"', '').trim();
     }
 
-    filteredProducts = List.from(allProducts);
-    filterProducts();
+    // Clean colors
+    List<Color>? parseColors(List<dynamic>? list) {
+      if (list == null) return null;
+      return list.map((c) {
+        try {
+          return Color(int.parse(c.toString().replaceAll('"', '').replaceFirst('#', '0xff')));
+        } catch (_) {
+          return Colors.black;
+        }
+      }).toList();
+    }
+
+    return Product(
+      id: doc.id,
+      name: cleanString(data['name']),
+      image: cleanString(data['image']).isNotEmpty
+          ? cleanString(data['image'])
+          : 'https://via.placeholder.com/150', // placeholder image
+      price: (data['price'] ?? 0).toDouble(),
+      category: cleanString(data['category']),
+      brand: cleanString(data['brand']).isNotEmpty ? cleanString(data['brand']) : null,
+      clothesType: cleanString(data['clothesType']).isNotEmpty
+          ? cleanString(data['clothesType'])
+          : null,
+      sizes: data['sizes'] != null ? List<int>.from(data['sizes']) : null,
+      colors: parseColors(data['colors']),
+    );
   }
+}
 
-  void filterProducts() {
-    filteredProducts = allProducts.where((product) {
-      bool categoryMatch = selectedCategory == null || product.category == selectedCategory;
+// Product Page Widget
+class ProductPage extends StatelessWidget {
+  final String selectedCategoryName;
 
-      bool brandMatch = true;
-      if (selectedCategory == CategoryType.shoes && selectedBrand != null) {
-        brandMatch = product.brand == selectedBrand;
-      }
-
-      bool clothesMatch = true;
-      if (selectedCategory == CategoryType.clothes && selectedClothesType != null) {
-        clothesMatch = product.clothesType == selectedClothesType;
-      }
-
-      return categoryMatch && brandMatch && clothesMatch;
-    }).toList();
-
-    setState(() {});
-  }
+  const ProductPage({super.key, required this.selectedCategoryName});
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    final h = MediaQuery.of(context).size.height;
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          "Products",
-          style: TextStyle(color: Colors.black, fontSize: w * 0.05),
-        ),
-        actions: [
-          Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.category, color: Colors.black),
-              onPressed: () => Scaffold.of(context).openEndDrawer(),
-            ),
-          )
-        ],
+        title: Text(selectedCategoryName),
+        backgroundColor: Colors.deepOrange,
       ),
-      endDrawer: Drawer(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text("Filter by Category",
-                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text("All"),
-              onTap: () {
-                selectedCategory = null;
-                selectedBrand = null;
-                selectedClothesType = null;
-                filterProducts();
-                Navigator.pop(context);
-              },
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('products')
+            .snapshots(), // fetch all products
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          List<Product> products = snapshot.data!.docs
+              .map((doc) => Product.fromFirestore(doc))
+              .where((p) =>
+                  p.category.toLowerCase() ==
+                  selectedCategoryName.toLowerCase()) // filter here
+              .toList();
+
+          if (products.isEmpty) return const Center(child: Text("No products in this category."));
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.7,
             ),
-            ListTile(
-              title: const Text("Shoes"),
-              onTap: () {
-                selectedCategory = CategoryType.shoes;
-                selectedBrand = null;
-                selectedClothesType = null;
-                filterProducts();
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: const Text("Clothes"),
-              onTap: () {
-                selectedCategory = CategoryType.clothes;
-                selectedBrand = null;
-                selectedClothesType = null;
-                filterProducts();
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: const Text("Accessories"),
-              onTap: () {
-                selectedCategory = CategoryType.accessories;
-                selectedBrand = null;
-                selectedClothesType = null;
-                filterProducts();
-                Navigator.pop(context);
-              },
-            ),
-            const Divider(height: 32),
-            if (selectedCategory == CategoryType.shoes) ...[
-              Text("Filter by Brand",
-                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-              ListTile(
-                title: const Text("Nike"),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return GestureDetector(
                 onTap: () {
-                  selectedBrand = ShoeBrand.nike;
-                  filterProducts();
-                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ProductDetailPage(product: product)));
                 },
-              ),
-              ListTile(
-                title: const Text("Adidas"),
-                onTap: () {
-                  selectedBrand = ShoeBrand.adidas;
-                  filterProducts();
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: const Text("Puma"),
-                onTap: () {
-                  selectedBrand = ShoeBrand.puma;
-                  filterProducts();
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-            if (selectedCategory == CategoryType.clothes) ...[
-              Text("Filter by Type",
-                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-              ListTile(
-                title: const Text("Top"),
-                onTap: () {
-                  selectedClothesType = ClothesType.top;
-                  filterProducts();
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: const Text("Bottom"),
-                onTap: () {
-                  selectedClothesType = ClothesType.bottom;
-                  filterProducts();
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: const Text("Suit"),
-                onTap: () {
-                  selectedClothesType = ClothesType.suit;
-                  filterProducts();
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: filteredProducts.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 0.65,
-        ),
-        itemBuilder: (context, index) {
-          final product = filteredProducts[index];
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ProductDetailPage(product: product)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: product.image.startsWith('http')
+                          ? Image.network(
+                              product.image,
+                              height: 120,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.asset(
+                              product.image,
+                              height: 120,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(product.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text("\$${product.price.toStringAsFixed(2)}",
+                        style: const TextStyle(color: Colors.deepOrange)),
+                  ],
+                ),
               );
             },
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.shade300,
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: Image.asset(product.image,
-                          fit: BoxFit.cover, width: double.infinity),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(product.name,
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text("\$${product.price}",
-                            style: GoogleFonts.poppins(
-                                color: Colors.black, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Wishlist Icon
-                            GestureDetector(
-                              onTap: () {
-                                // TODO: Add to wishlist logic
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: Colors.grey.shade300,
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 3))
-                                  ],
-                                ),
-                                child: const Icon(Icons.favorite_border,
-                                    color: Colors.deepOrange, size: 20),
-                              ),
-                            ),
-                            // Add to Cart Button
-                            ElevatedButton(
-                              onPressed: () {
-                                // TODO: Add to cart logic
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepOrange,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                              ),
-                              child: const Icon(Icons.shopping_cart, size: 20),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
           );
         },
       ),
