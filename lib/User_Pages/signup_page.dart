@@ -3,6 +3,7 @@ import 'login_page.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
 import 'package:shoe_store_app/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shoe_store_app/main.dart';
 import 'home_page.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -99,6 +100,15 @@ class _SignupPageState extends State<SignupPage> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  /// Helper function
+  Future<void> waitForEmailVerification(User user) async {
+    while (!user.emailVerified) {
+      await Future.delayed(const Duration(seconds: 3));
+      await user.reload();
+      user = FirebaseAuth.instance.currentUser!;
+    }
   }
 
   // Launch URL helper
@@ -203,7 +213,7 @@ class _SignupPageState extends State<SignupPage> {
                         "Full Name",
                         Icons.person,
                         inputFontSize,
-                        controller: _nameController, 
+                        controller: _nameController,
                         validator: (value) {
                           if (value == null || value.isEmpty)
                             return "Enter your full name";
@@ -537,18 +547,8 @@ class _SignupPageState extends State<SignupPage> {
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
                                 setState(() {
-                                  _isLoading = true; // Show loading indicator
+                                  _isLoading = true;
                                 });
-
-                                // Async domain check
-                                bool domainExists = await checkDomainExists(
-                                  _emailController.text.trim(),
-                                );
-                                if (!domainExists) {
-                                  setState(() => _isLoading = false);
-                                  showSnackBar("Email domain does not exist");
-                                  return;
-                                }
 
                                 try {
                                   // 1️⃣ Create user with email & password
@@ -563,10 +563,64 @@ class _SignupPageState extends State<SignupPage> {
                                   User? user = userCredential.user;
 
                                   if (user != null) {
-                                    // 2️⃣ Save additional info to Firestore
+                                    // 2️⃣ Update display name
+                                    await user.updateDisplayName(
+                                      _nameController.text.trim(),
+                                    );
+
+                                    // 3️⃣ Send verification email
+                                    await user.sendEmailVerification(
+                                      ActionCodeSettings(
+                                        url:
+                                            'https://sport-brands-42c8a.web.app',
+                                        handleCodeInApp: false,
+                                        androidPackageName:
+                                            'com.example.shoe_store_app',
+                                        androidInstallApp: true,
+                                        androidMinimumVersion: '21',
+                                        iOSBundleId: 'com.example.shoeStoreApp',
+                                      ),
+                                    );
+
+                                    showSnackBar(
+                                      "📩 Verification email sent! Please check your inbox.",
+                                      color: Colors.green,
+                                    );
+                                    
+
+                                    // 4️⃣ Wait until email is verified
+                                    bool isVerified = false;
+                                    while (!isVerified) {
+                                      print(
+                                        "🔄 Checking verification status...",
+                                      );
+
+                                      await Future.delayed(
+                                        const Duration(seconds: 3),
+                                      );
+
+                                      await user?.reload(); // Refresh user state
+                                      user = FirebaseAuth.instance.currentUser;
+
+                                      isVerified = user?.emailVerified ?? false;
+                                      print(
+                                        "✅ Email verified status: $isVerified",
+                                      );
+                                    }
+
+                                    // 5️⃣ When verified
+                                    print("🎉 User has verified their email!");
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const LoginPage(),
+                                      ),
+                                    );
+
+                                    // Save user info to Firestore
                                     await FirebaseFirestore.instance
                                         .collection("users")
-                                        .doc(user.uid)
+                                        .doc(user!.uid)
                                         .set({
                                           "fullName":
                                               _nameController.text.trim(),
@@ -580,64 +634,21 @@ class _SignupPageState extends State<SignupPage> {
                                               FieldValue.serverTimestamp(),
                                         });
 
-                                    // 3️⃣ Update display name
-                                    await user.updateDisplayName(
-                                      _nameController.text.trim(),
-                                    );
-
-                                    // 4️⃣ Send verification email using ActionCodeSettings
-                                    try {
-                                      await user.sendEmailVerification(
-                                        ActionCodeSettings(
-                                          url:
-                                              'https://sport-brands-42c8a.web.app',
-                                          handleCodeInApp: true,
-                                          androidPackageName:
-                                              'com.example.shoe_store_app',
-                                          androidInstallApp: true,
-                                          androidMinimumVersion: '21',
-                                          iOSBundleId:
-                                              'com.example.shoeStoreApp',
-                                        ),
-                                      );
-
-                                      showSnackBar(
-                                        "Verification email sent! Please check your inbox.",
-                                        color: Colors.green,
-                                      );
-                                    } catch (e) {
-                                      print("❌ Verification error: $e");
-                                      showSnackBar(
-                                        "Failed to send verification email: $e",
-                                      );
-                                    }
-
-                                    // 5️⃣ Sign out until verification
+                                    // 6️⃣ Sign out so they log in fresh
                                     await FirebaseAuth.instance.signOut();
+                                    await user.reload();
+                                    print ("iam here");
 
-<<<<<<< HEAD
+                                    // 7️⃣ Navigate to LoginPage
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => const LoginPage(),
                                       ),
-=======
-                                    // ✅ Navigate to HomePage after short delay
-                                    Future.delayed(
-                                      const Duration(seconds: 1),
-                                      () {
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => const HomePage(),
-                                          ),
-                                        );
-                                      },
->>>>>>> 10648a00bfeee2fcf0074e1227ddfc6777b3b1bf
                                     );
+                                    print("i dont go to the login page whyyyyyyyyy");
                                   }
                                 } on FirebaseAuthException catch (e) {
-                                  setState(() => _isLoading = false);
                                   String message;
                                   if (e.code == 'email-already-in-use') {
                                     message =
@@ -652,6 +663,8 @@ class _SignupPageState extends State<SignupPage> {
                                         "An unexpected error occurred";
                                   }
                                   showSnackBar(message);
+                                } finally {
+                                  setState(() => _isLoading = false);
                                 }
                               }
                             },

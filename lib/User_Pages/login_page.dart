@@ -5,7 +5,9 @@ import 'package:shoe_store_app/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_page.dart';
 import 'signup_page.dart';
+import 'package:shoe_store_app/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -20,6 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   final FocusNode _focusNodePassword = FocusNode();
   final GlobalKey<FormState> _formKey = GlobalKey();
   bool _obscurePassword = true;
+  bool _isLoading = false;
   final user = FirebaseAuth.instance.currentUser;
 
   @override
@@ -257,34 +260,68 @@ class _LoginPageState extends State<LoginPage> {
                                     if (_formKey.currentState?.validate() ??
                                         false) {
                                       try {
-                                        // Call Firebase email login
-                                        final user = await AuthService()
-                                            .signInWithEmail(
-                                              _controllerUsername.text
-                                                  .trim(), // email
-                                              _controllerPassword.text
-                                                  .trim(), // password
-                                            );
+                                        // Sign in
+                                        final userCredential =
+                                            await FirebaseAuth.instance
+                                                .signInWithEmailAndPassword(
+                                                  email:
+                                                      _controllerUsername.text
+                                                          .trim(),
+                                                  password:
+                                                      _controllerPassword.text
+                                                          .trim(),
+                                                );
 
-                                        if (user != null) {
-                                          // ✅ Login successful
+                                        User? user = userCredential.user;
+                                        await user
+                                            ?.reload(); // Refresh user info
+
+                                        if (user != null &&
+                                            user.emailVerified) {
+                                          // ✅ Verified, go to home
+                                          
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
                                               builder: (_) => HomePage(),
                                             ),
                                           );
+                                        } else {
+                                          // ❌ Not verified
+                                          await FirebaseAuth.instance.signOut();
+                                          showSnackBar(
+                                            "Please verify your email before logging in.",
+                                            color: Colors.red,
+                                          );
+
+                                          // Optional: resend verification email
+                                          try {
+                                            await user?.sendEmailVerification(
+                                              ActionCodeSettings(
+                                                url:
+                                                    'https://sport-brands-42c8a.web.app',
+                                                handleCodeInApp: false,
+                                                androidPackageName:
+                                                    'com.example.shoe_store_app',
+                                                androidInstallApp: true,
+                                                androidMinimumVersion: '21',
+                                                iOSBundleId:
+                                                    'com.example.shoeStoreApp',
+                                              ),
+                                            );
+                                            showSnackBar(
+                                              "Verification email resent! Check your inbox.",
+                                              color: Colors.green,
+                                            );
+                                          } catch (e) {
+                                            print(
+                                              "❌ Failed to resend verification email: $e",
+                                            );
+                                          }
                                         }
-                                      } catch (e) {
-                                        // ❌ Show error if login fails
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              "Login failed: ${e.toString()}",
-                                            ),
-                                          ),
+                                      } on FirebaseAuthException catch (e) {
+                                        showSnackBar(
+                                          "Login failed: ${e.message}",
                                         );
                                       }
                                     }
@@ -578,6 +615,12 @@ class _LoginPageState extends State<LoginPage> {
         icon: SvgPicture.string(svg, width: size * 0.5, height: size * 0.5),
         onPressed: onPressed,
       ),
+    );
+  }
+
+  void showSnackBar(String message, {Color? color}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color ?? Colors.red),
     );
   }
 
