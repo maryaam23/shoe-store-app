@@ -4,13 +4,23 @@ import 'User_Pages/logo_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'User_Pages/home_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+late final FirebaseFirestore firestore; // Make it globally accessible
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter engine is ready
+  WidgetsFlutterBinding.ensureInitialized();
+  
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  ); // Initializes Firebase
+  );
+
+  // ✅ Initialize custom Firestore database
+  firestore = FirebaseFirestore.instanceFor(
+    app: Firebase.app(),
+    databaseId: "sport-brands-database",
+  );
+
 
    try {
     final test = await FirebaseFirestore.instance.collection('Nproducts').get();
@@ -27,7 +37,6 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -36,10 +45,6 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       home: const LogoScreen(),
-      // home: Scaffold(
-      //   appBar: AppBar(title: const Text('Firebase Connected!')),
-      //   body: const Center(child: Text('Hello Firebase 👋')),
-      // ),
     );
   }
 

@@ -1,1 +1,33 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"sport-brands-42c8a","appId":"1:848203053924:android:7664d0352d3dd2934b9871","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"sport-brands-42c8a","configurations":{"android":"1:848203053924:android:7664d0352d3dd2934b9871","ios":"1:848203053924:ios:cd28cb961d82503e4b9871","macos":"1:848203053924:ios:cd28cb961d82503e4b9871","web":"1:848203053924:web:b9f38a3f8e2ea18e4b9871","windows":"1:848203053924:web:ccd8729203b0e1874b9871"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "sport-brands-42c8a",
+          "appId": "1:848203053924:android:7664d0352d3dd2934b9871",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "sport-brands-42c8a",
+          "configurations": {
+            "android": "1:848203053924:android:7664d0352d3dd2934b9871",
+            "ios": "1:848203053924:ios:cd28cb961d82503e4b9871",
+            "macos": "1:848203053924:ios:cd28cb961d82503e4b9871",
+            "web": "1:848203053924:web:b9f38a3f8e2ea18e4b9871",
+            "windows": "1:848203053924:web:ccd8729203b0e1874b9871"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
