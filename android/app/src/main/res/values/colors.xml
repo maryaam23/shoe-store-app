@@ -1,0 +1,4 @@
+<resources>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color> <!-- you can add white too if needed -->
+</resources>

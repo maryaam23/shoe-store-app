@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/gestures.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -72,6 +72,8 @@ class _SignupPageState extends State<SignupPage> {
     "Tubas",
     "East Jerusalem",
   ];
+
+  String _selectedPayment = "Cash on Delivery"; // default
 
   // Helper function inside the state class
   Future<bool> checkDomainExists(String email) async {
@@ -618,6 +620,24 @@ class _SignupPageState extends State<SignupPage> {
                                     );
 
                                     // Save user info to Firestore
+                                    // 1️⃣ Build payment method dynamically
+                                    Map<String, dynamic> paymentMethod;
+
+                                    if (_selectedPayment == "Visa") {
+                                      paymentMethod = {
+                                        "type": "Visa",
+                                        "name": null,
+                                        "cardNumber": null,
+                                        "expiry": null,
+                                        "cvv": null,
+                                      };
+                                    } else {
+                                      paymentMethod = {
+                                        "type": "Cash on Delivery",
+                                      };
+                                    }
+
+                                    // 2️⃣ Save user info to Firestore
                                     await FirebaseFirestore.instance
                                         .collection("users")
                                         .doc(user!.uid)
@@ -632,6 +652,14 @@ class _SignupPageState extends State<SignupPage> {
                                           "country": "Palestine",
                                           "createdAt":
                                               FieldValue.serverTimestamp(),
+                                          "photoURL": null,
+                                          "selectedPaymentMethod":
+                                              paymentMethod,
+                                          "savedAddress": {
+                                            "latitude": null,
+                                            "longitude": null,
+                                            "address": "No address saved",
+                                          },
                                         });
 
                                     // 6️⃣ Sign out so they log in fresh

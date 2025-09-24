@@ -1,50 +1,79 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Notifications',
-      theme: ThemeData(
-        fontFamily: 'Inter',
-        primaryColor: const Color(0xFF0D78F2),
-        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-      ),
-      home: const NotificationScreen(),
-    );
-  }
-}
-
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
-  final List<Map<String, String>> notifications = const [
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  int selectedTabIndex = 0;
+
+  // Notifications for each tab
+  final List<Map<String, String>> promotions = const [
     {
       'title': 'Summer Sale',
       'subtitle': 'Limited time offer! Get 20% off on all running shoes.',
       'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuA2J-8LjCSUbPcH4wAp_wse4Tpd_eEDJnXCOQC5AB2V-nLOnXauCTEGMCeEj9UgngRMZ815IXODY4CqeIPrOBDUgk9PHXwCXUz8fFvmGS6_8Zag73_fnwsJKPwxxJvkmnF6lqDk0Ed9YR7IZRcPiKKgMp336vmsoscR2v-VavC_KCnE1PR6ImpIVMtF1ubC2ZvF4sj-XjFfpN5RORYZ8ZoDA0I_WBVYK6Z3TK1QZnyJtsoEKwjoACPKbGSzqgtNLPqpzIBlUfyX6vp5',
-    },
-    {
-      'title': 'New Arrivals',
-      'subtitle': 'New arrivals in our basketball shoe collection.',
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuBNyRfjn_TaF-jzUmf2OWcmih2MyJSRhBkPyBmTLkYAzKyv9263cI1N6zBPViRNCkbVaiXAAC24pZt-XegswmVMdmzww95Kb_lEvESR4Ml20_jrp4FJbNQCKWeRs-eHBXbaZp1YM-IVrUebByZRYBKjsoPZr0avTH5t_874p1kJjW_XtB-kOLB110gHbUpfvRiId3-Xr7aIFs1QuuLC5bIs81yLQeiHN92_uNbedd732c8d4kUMxxRbqfugf3_eUnACLMDZDVSyoTOS',
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuDiMr-33X4QDduGDebcdfwMOIDXgAI6qowG7XYx-840QI5DR1-NlVU5RrHBI7B9-d5ZGCq_5mkT76qC3_KYrLOikOzRww1cF8f4HFJSbvv4xUj4yBCuPR4n6sI4Iz7UVsbw_ZVkzVbgYOXwC9uKufS8auJfV4ph-c0sQ1AICzlp7h4S8TsihoqAspH0vQ_Bp77Dn-XS7MFUZNvPge6ZSUqQCyI1L0hoPf6H3jJC6yV5nYnyfyg5WyIe-0wSbdO_WG13CoEF2hqmCN0f',
+
     },
     {
       'title': 'Loyalty Program',
       'subtitle': 'Exclusive discount for our loyal customers.',
       'image':
           'https://lh3.googleusercontent.com/aida-public/AB6AXuDiMr-33X4QDduGDebcdfwMOIDXgAI6qowG7XYx-840QI5DR1-NlVU5RrHBI7B9-d5ZGCq_5mkT76qC3_KYrLOikOzRww1cF8f4HFJSbvv4xUj4yBCuPR4n6sI4Iz7UVsbw_ZVkzVbgYOXwC9uKufS8auJfV4ph-c0sQ1AICzlp7h4S8TsihoqAspH0vQ_Bp77Dn-XS7MFUZNvPge6ZSUqQCyI1L0hoPf6H3jJC6yV5nYnyfyg5WyIe-0wSbdO_WG13CoEF2hqmCN0f',
+
     },
   ];
+
+  final List<Map<String, String>> orderUpdates = const [
+    {
+      'title': 'Order #1234',
+      'subtitle': 'Your order has been shipped.',
+      'image':
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuDiMr-33X4QDduGDebcdfwMOIDXgAI6qowG7XYx-840QI5DR1-NlVU5RrHBI7B9-d5ZGCq_5mkT76qC3_KYrLOikOzRww1cF8f4HFJSbvv4xUj4yBCuPR4n6sI4Iz7UVsbw_ZVkzVbgYOXwC9uKufS8auJfV4ph-c0sQ1AICzlp7h4S8TsihoqAspH0vQ_Bp77Dn-XS7MFUZNvPge6ZSUqQCyI1L0hoPf6H3jJC6yV5nYnyfyg5WyIe-0wSbdO_WG13CoEF2hqmCN0f',
+
+    },
+    {
+      'title': 'Order #5678',
+      'subtitle': 'Your order is out for delivery.',
+      'image':
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuDiMr-33X4QDduGDebcdfwMOIDXgAI6qowG7XYx-840QI5DR1-NlVU5RrHBI7B9-d5ZGCq_5mkT76qC3_KYrLOikOzRww1cF8f4HFJSbvv4xUj4yBCuPR4n6sI4Iz7UVsbw_ZVkzVbgYOXwC9uKufS8auJfV4ph-c0sQ1AICzlp7h4S8TsihoqAspH0vQ_Bp77Dn-XS7MFUZNvPge6ZSUqQCyI1L0hoPf6H3jJC6yV5nYnyfyg5WyIe-0wSbdO_WG13CoEF2hqmCN0f',
+
+    },
+  ];
+
+  final List<Map<String, String>> recommendations = const [
+    {
+      'title': 'New Sneakers',
+      'subtitle': 'Check out our latest basketball sneakers.',
+      'image':
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuDiMr-33X4QDduGDebcdfwMOIDXgAI6qowG7XYx-840QI5DR1-NlVU5RrHBI7B9-d5ZGCq_5mkT76qC3_KYrLOikOzRww1cF8f4HFJSbvv4xUj4yBCuPR4n6sI4Iz7UVsbw_ZVkzVbgYOXwC9uKufS8auJfV4ph-c0sQ1AICzlp7h4S8TsihoqAspH0vQ_Bp77Dn-XS7MFUZNvPge6ZSUqQCyI1L0hoPf6H3jJC6yV5nYnyfyg5WyIe-0wSbdO_WG13CoEF2hqmCN0f',
+
+    },
+    {
+      'title': 'Running Shoes',
+      'subtitle': 'Top picks for your running sessions.',
+      'image':
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuDiMr-33X4QDduGDebcdfwMOIDXgAI6qowG7XYx-840QI5DR1-NlVU5RrHBI7B9-d5ZGCq_5mkT76qC3_KYrLOikOzRww1cF8f4HFJSbvv4xUj4yBCuPR4n6sI4Iz7UVsbw_ZVkzVbgYOXwC9uKufS8auJfV4ph-c0sQ1AICzlp7h4S8TsihoqAspH0vQ_Bp77Dn-XS7MFUZNvPge6ZSUqQCyI1L0hoPf6H3jJC6yV5nYnyfyg5WyIe-0wSbdO_WG13CoEF2hqmCN0f',
+
+    },
+  ];
+
+  List<Map<String, String>> get currentNotifications {
+    switch (selectedTabIndex) {
+      case 0:
+        return promotions;
+      case 1:
+        return orderUpdates;
+      case 2:
+        return recommendations;
+      default:
+        return promotions;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +83,7 @@ class NotificationScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF0D141C)),
-          onPressed: () {},
+          onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
         title: const Text(
@@ -74,21 +103,24 @@ class NotificationScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildTab('Promotions', true),
-                _buildTab('Order Updates', false),
-                _buildTab('Recommendations', false),
+                _buildTab('Promotions', 0),
+                _buildTab('Order Updates', 1),
+                _buildTab('Recommendations', 2),
               ],
             ),
           ),
           const Divider(height: 0, color: Color(0xFFCEDAE8)),
-          // Notifications list
+          // Notification List
           Expanded(
             child: ListView.builder(
-              itemCount: notifications.length,
+              itemCount: currentNotifications.length,
               itemBuilder: (context, index) {
-                final item = notifications[index];
+                final item = currentNotifications[index];
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
@@ -101,11 +133,17 @@ class NotificationScreen extends StatelessWidget {
                   title: Text(
                     item['title']!,
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF0D141C)),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF0D141C),
+                    ),
                   ),
                   subtitle: Text(
                     item['subtitle']!,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF49709C)),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF49709C),
+                    ),
                   ),
                 );
               },
@@ -113,42 +151,39 @@ class NotificationScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF0D141C),
-        unselectedItemColor: const Color(0xFF49709C),
-        currentIndex: 0,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Categories'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Wishlist'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
+     
     );
   }
 
-  Widget _buildTab(String title, bool isSelected) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            color: isSelected ? const Color(0xFF0D141C) : const Color(0xFF49709C),
-            fontWeight: FontWeight.bold,
+  Widget _buildTab(String title, int index) {
+    bool isSelected = selectedTabIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedTabIndex = index;
+        });
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? const Color(0xFF0D141C) : const Color(0xFF49709C),
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          height: 3,
-          width: 60,
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0D78F2) : Colors.transparent,
-            borderRadius: BorderRadius.circular(2),
+          const SizedBox(height: 4),
+          Container(
+            height: 3,
+            width: 60,
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFF0D78F2) : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

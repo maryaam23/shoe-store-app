@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -43,26 +44,32 @@ class AuthService {
     }
   }
 
-  // ✅ Facebook Sign-In (Android/iOS only)
   Future<User?> signInWithFacebook() async {
-    try {
-      final result = await FacebookAuth.instance.login();
+  try {
+    // Trigger the sign-in flow
+    final LoginResult result = await FacebookAuth.instance.login();
 
-      if (result.status == LoginStatus.success) {
-        final accessToken = result.accessToken!;
-        final credential = FacebookAuthProvider.credential(accessToken.token);
+    if (result.status == LoginStatus.success) {
+      // Get the access token
+      final AccessToken accessToken = result.accessToken!;
 
-        final userCredential = await _auth.signInWithCredential(credential);
-        return userCredential.user;
-      } else {
-        print("❌ Facebook login failed: ${result.status}");
-        return null;
-      }
-    } catch (e) {
-      print("❌ Facebook sign-in error: $e");
+      // Create a credential for Firebase
+      final OAuthCredential credential =
+          FacebookAuthProvider.credential(accessToken.tokenString);
+
+      // Sign in to Firebase
+      final userCredential = await _auth.signInWithCredential(credential);
+      return userCredential.user;
+    } else {
+      print("Facebook login failed: ${result.status}");
       return null;
     }
+  } catch (e) {
+    print("Error during Facebook login: $e");
+    return null;
   }
+}
+
 
   // ✅ Logout from all providers
   Future<void> signOut() async {

@@ -9,13 +9,24 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/> <!-- optional -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/> <!-- optional -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/> <!-- optional -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/> <!-- optional Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/> 
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+
 
 
     <application
         android:label="shoe_store_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        
+        <meta-data
+        android:name="com.google.firebase.messaging.default_notification_icon"
+        android:resource="@mipmap/ic_launcher"/>
+        <meta-data
+        android:name="com.google.firebase.messaging.default_notification_color"
+        android:resource="@color/black"/>
+
+
 
         <!-- MainActivity -->
         <activity

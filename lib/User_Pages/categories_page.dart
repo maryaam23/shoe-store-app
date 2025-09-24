@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
 import 'product_page.dart';
 
-class CategoriesPage extends StatefulWidget {
+class CategoriesPage extends StatelessWidget {
   const CategoriesPage({super.key});
 
-  @override
-  State<CategoriesPage> createState() => _CategoriesPageState();
-}
-
-class _CategoriesPageState extends State<CategoriesPage> {
-  final categories = [
+  final List<Map<String, dynamic>> categories = const [
     {"name": "Shoes", "icon": Icons.sports_basketball},
     {"name": "Clothes", "icon": Icons.checkroom},
     {"name": "Accessories", "icon": Icons.watch},
@@ -59,8 +54,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(category["icon"] as IconData,
-                      size: 50, color: Colors.deepOrange),
+                  Icon(category["icon"] as IconData, size: 50, color: Colors.deepOrange),
                   const SizedBox(height: 8),
                   Text(category["name"] as String,
                       style: const TextStyle(

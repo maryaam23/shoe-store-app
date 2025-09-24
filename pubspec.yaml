@@ -46,7 +46,7 @@ dependencies:
   hive_flutter: ^1.1.0
   flutter_svg: ^2.2.1
   google_sign_in: ^6.3.0
-  flutter_facebook_auth: ^6.0.0
+  flutter_facebook_auth: ^7.0.1
   email_validator: ^2.1.17
   cupertino_icons: ^1.0.8
   google_fonts: ^6.3.1
@@ -54,6 +54,10 @@ dependencies:
   url_launcher: ^6.1.10
   image_picker: ^1.1.0
   shared_preferences: ^2.2.2
+  file_picker: ^10.3.3
+  geolocator: ^14.0.2
+  geocoding: ^2.1.0
+
   
 
 

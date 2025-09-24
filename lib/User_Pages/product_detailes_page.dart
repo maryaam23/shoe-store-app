@@ -11,7 +11,7 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
-  int selectedSize = 42;
+  int selectedSize = 0;
   Color selectedColor = Colors.black;
 
   @override
@@ -56,46 +56,53 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Product Image
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(horizontalSpace(20)),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.grey.shade300, blurRadius: 10, offset: Offset(0, 5)),
+                        color: Colors.grey.shade300, blurRadius: 10, offset: const Offset(0, 5)),
                   ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(horizontalSpace(20)),
-                  child: Image.asset(
-                    widget.product.image,
-                    height: mediaHeight * 0.3,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+                  child: widget.product.image.startsWith('http')
+                      ? Image.network(
+                          widget.product.image,
+                          height: mediaHeight * 0.3,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.asset(
+                          widget.product.image,
+                          height: mediaHeight * 0.3,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ),
               SizedBox(height: verticalSpace(20)),
 
-              // Product Name & Category
+              // Name & Category
               Text(widget.product.name,
                   style: GoogleFonts.poppins(
                       fontSize: fontSize(26),
                       fontWeight: FontWeight.bold,
                       color: Colors.black87)),
               SizedBox(height: verticalSpace(4)),
-              Text(widget.product.category.name,
-                  style: GoogleFonts.poppins(fontSize: fontSize(16), color: Colors.grey[600])),
+              Text(widget.product.category,
+                  style: GoogleFonts.poppins(
+                      fontSize: fontSize(16), color: Colors.grey[600])),
               SizedBox(height: verticalSpace(8)),
-              Text("\$${widget.product.price}",
+              Text("\$${widget.product.price.toStringAsFixed(2)}",
                   style: GoogleFonts.poppins(
                       fontSize: fontSize(24),
                       fontWeight: FontWeight.w600,
                       color: Colors.deepOrange)),
 
               // Sizes
-              if (widget.product.sizes != null) ...[
+              if (widget.product.sizes != null && widget.product.sizes!.isNotEmpty) ...[
                 SizedBox(height: verticalSpace(30)),
                 Text("Select Size",
                     style: GoogleFonts.poppins(
@@ -108,8 +115,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     return ChoiceChip(
                       label: Text(size.toString(),
                           style: GoogleFonts.poppins(
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               color: isSelected ? Colors.white : Colors.black87,
                               fontSize: fontSize(14))),
                       selected: isSelected,
@@ -124,7 +130,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ],
 
               // Colors
-              if (widget.product.colors != null) ...[
+              if (widget.product.colors != null && widget.product.colors!.isNotEmpty) ...[
                 SizedBox(height: verticalSpace(30)),
                 Text("Select Color",
                     style: GoogleFonts.poppins(
@@ -154,12 +160,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ),
               ],
 
-              // Action Buttons
               SizedBox(height: verticalSpace(40)),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Wishlist Button
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -168,23 +172,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         BoxShadow(
                             color: Colors.grey.shade300,
                             blurRadius: 8,
-                            offset: Offset(0, 4))
+                            offset: const Offset(0, 4))
                       ],
                     ),
                     child: IconButton(
-                      icon:
-                          Icon(Icons.favorite_border, color: Colors.deepOrange, size: fontSize(28)),
-                      onPressed: () {
-                        // Add to wishlist action
-                      },
+                      icon: Icon(Icons.favorite_border,
+                          color: Colors.deepOrange, size: fontSize(28)),
+                      onPressed: () {},
                     ),
                   ),
-
-                  // Add to Cart Button
                   ElevatedButton(
-                    onPressed: () {
-                      // Add to cart action
-                    },
+                    onPressed: () {},
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepOrange,
                       padding: EdgeInsets.symmetric(
