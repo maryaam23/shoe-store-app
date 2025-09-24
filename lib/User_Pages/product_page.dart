@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shoe_store_app/main.dart';
 import 'product_detailes_page.dart';
 
 // ========================
@@ -114,7 +115,9 @@ class ProductPage extends StatelessWidget {
         backgroundColor: Colors.deepOrange,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('Nproducts').snapshots(),
+        // Correct
+        stream: firestore.collection('Nproducts').snapshots(),
+
         builder: (context, snapshot) {
           if (!snapshot.hasData)
             return const Center(child: CircularProgressIndicator());

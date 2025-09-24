@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoe_store_app/main.dart';
 import 'product_detailes_page.dart';
 import 'profile_page.dart';
 import 'categories_page.dart';
@@ -25,12 +26,10 @@ class _HomePageState extends State<HomePage> {
     "My Profile",
   ];
 
-  // Remove pages initialization from initState
-  // We'll build pages lazily in IndexedStack
-
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
+    double h = MediaQuery.of(context).size.height;
 
     return Scaffold(
       appBar: AppBar(
@@ -80,7 +79,7 @@ class _HomePageState extends State<HomePage> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          buildHomeBody(), // Home page lazily built here
+          buildHomeBody(w, h),
           const CartPage(),
           const WishlistPage(),
           const ProfilePage(),
@@ -113,22 +112,18 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Home Body with Firestore Products
-  Widget buildHomeBody() {
-    double w = MediaQuery.of(context).size.width;
-    double h = MediaQuery.of(context).size.height;
-
+  Widget buildHomeBody(double w, double h) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Optional banners
+          // Banner example
           SizedBox(
             height: h * 0.2,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.all(w * 0.03),
-              itemCount: 3, // example banner count
+              itemCount: 3,
               separatorBuilder: (_, __) => SizedBox(width: w * 0.03),
               itemBuilder: (_, index) {
                 return ClipRRect(
@@ -152,25 +147,34 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // Firestore Products Grid
-          // inside buildHomeBody → Firestore Products Grid
+          // Firestore Products
           StreamBuilder<QuerySnapshot>(
-            stream:
-                FirebaseFirestore.instance
-                    .collection('Nproducts')
-                    .snapshots(), // ✅ fixed
+            stream: firestore.collection('Nproducts').snapshots(),
             builder: (context, snapshot) {
+              // ✅ Correct debug print without databaseId
+              print('Firestore app name: ${firestore.app.name}');
+              print('Connection state: ${snapshot.connectionState}');
+
               if (snapshot.connectionState == ConnectionState.waiting) {
+                print('Waiting for Firestore data...');
                 return const Center(child: CircularProgressIndicator());
               }
+
+              if (snapshot.hasError) {
+                print('Firestore error: ${snapshot.error}');
+                return Center(child: Text("Error fetching products."));
+              }
+
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                print('No products found.');
                 return const Center(child: Text("No products found."));
               }
 
-              List<Product> products =
+              final products =
                   snapshot.data!.docs
                       .map((doc) => Product.fromFirestore(doc))
                       .toList();
+              print('Loaded ${products.length} products from Firestore');
 
               return GridView.builder(
                 shrinkWrap: true,
