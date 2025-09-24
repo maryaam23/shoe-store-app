@@ -40,32 +40,42 @@ class _HomePageState extends State<HomePage> {
         title: Text(
           pageTitles[_selectedIndex],
           style: TextStyle(
-              color: Colors.black,
-              fontSize: w * 0.05,
-              fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: w * 0.05,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        actions: _selectedIndex == 0
-            ? [
-                IconButton(
-                  icon: Icon(Icons.notifications, color: Colors.black, size: w * 0.07),
-                  onPressed: () {
-                    Navigator.push(
+        actions:
+            _selectedIndex == 0
+                ? [
+                  IconButton(
+                    icon: Icon(
+                      Icons.notifications,
+                      color: Colors.black,
+                      size: w * 0.07,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const NotificationScreen()));
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.list, color: Colors.black, size: w * 0.07),
-                  onPressed: () {
-                    Navigator.push(
+                          builder: (_) => const NotificationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.list, color: Colors.black, size: w * 0.07),
+                    onPressed: () {
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const CategoriesPage()));
-                  },
-                ),
-              ]
-            : null,
+                          builder: (_) => const CategoriesPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ]
+                : null,
       ),
       body: IndexedStack(
         index: _selectedIndex,
@@ -82,12 +92,22 @@ class _HomePageState extends State<HomePage> {
         unselectedItemColor: Colors.grey,
         onTap: (index) => setState(() => _selectedIndex = index),
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home, size: w * 0.06), label: "Home"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart, size: w * 0.06), label: "Cart"),
+            icon: Icon(Icons.home, size: w * 0.06),
+            label: "Home",
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border, size: w * 0.06), label: "Wishlist"),
-          BottomNavigationBarItem(icon: Icon(Icons.person, size: w * 0.06), label: "Profile"),
+            icon: Icon(Icons.shopping_cart, size: w * 0.06),
+            label: "Cart",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border, size: w * 0.06),
+            label: "Wishlist",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person, size: w * 0.06),
+            label: "Profile",
+          ),
         ],
       ),
     );
@@ -133,8 +153,12 @@ class _HomePageState extends State<HomePage> {
           ),
 
           // Firestore Products Grid
+          // inside buildHomeBody → Firestore Products Grid
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('products').snapshots(),
+            stream:
+                FirebaseFirestore.instance
+                    .collection('Nproducts')
+                    .snapshots(), // ✅ fixed
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -143,9 +167,10 @@ class _HomePageState extends State<HomePage> {
                 return const Center(child: Text("No products found."));
               }
 
-              List<Product> products = snapshot.data!.docs
-                  .map((doc) => Product.fromFirestore(doc))
-                  .toList();
+              List<Product> products =
+                  snapshot.data!.docs
+                      .map((doc) => Product.fromFirestore(doc))
+                      .toList();
 
               return GridView.builder(
                 shrinkWrap: true,
@@ -174,32 +199,36 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(w * 0.03),
-                          child: product.image.startsWith('http')
-                              ? Image.network(
-                                  product.image,
-                                  height: h * 0.15,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.asset(
-                                  product.image,
-                                  height: h * 0.15,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
+                          child:
+                              product.image.startsWith('http')
+                                  ? Image.network(
+                                    product.image,
+                                    height: h * 0.15,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  )
+                                  : Image.asset(
+                                    product.image,
+                                    height: h * 0.15,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
                         ),
                         SizedBox(height: h * 0.01),
                         Text(
                           product.name,
                           style: TextStyle(
-                              fontWeight: FontWeight.w500, fontSize: w * 0.04),
+                            fontWeight: FontWeight.w500,
+                            fontSize: w * 0.04,
+                          ),
                         ),
                         Text(
                           "\$${product.price.toStringAsFixed(2)}",
                           style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: w * 0.04,
-                              color: Colors.deepOrange),
+                            fontWeight: FontWeight.bold,
+                            fontSize: w * 0.04,
+                            color: Colors.deepOrange,
+                          ),
                         ),
                       ],
                     ),

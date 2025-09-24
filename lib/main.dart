@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'User_Pages/logo_page.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,8 +11,18 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ); // Initializes Firebase
+
+   try {
+    final test = await FirebaseFirestore.instance.collection('Nproducts').get();
+    print('✅ Firestore connected! Found ${test.docs.length} documents.');
+  } catch (e) {
+    print('❌ Firestore connection error: $e');
+  }
+
   runApp(const MyApp());
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

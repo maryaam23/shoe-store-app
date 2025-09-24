@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'product_page.dart';
 
+// ========================
+// Product Detail Page
+// ========================
 class ProductDetailPage extends StatefulWidget {
   final Product product;
   const ProductDetailPage({super.key, required this.product});
@@ -40,13 +43,20 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black87, size: fontSize(24)),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Colors.black87,
+            size: fontSize(24),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "Product Details",
           style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600, color: Colors.black87, fontSize: fontSize(20)),
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+            fontSize: fontSize(20),
+          ),
         ),
         centerTitle: true,
       ),
@@ -56,107 +66,205 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Product Image
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(horizontalSpace(20)),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.grey.shade300, blurRadius: 10, offset: const Offset(0, 5)),
+                      color: Colors.grey.shade300,
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
                   ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(horizontalSpace(20)),
-                  child: widget.product.image.startsWith('http')
-                      ? Image.network(
-                          widget.product.image,
-                          height: mediaHeight * 0.3,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        )
-                      : Image.asset(
-                          widget.product.image,
-                          height: mediaHeight * 0.3,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
+                  child:
+                      widget.product.image.startsWith('http')
+                          ? Image.network(
+                            widget.product.image,
+                            height: mediaHeight * 0.3,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          )
+                          : Image.asset(
+                            widget.product.image,
+                            height: mediaHeight * 0.3,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
                 ),
               ),
               SizedBox(height: verticalSpace(20)),
 
               // Name & Category
-              Text(widget.product.name,
-                  style: GoogleFonts.poppins(
-                      fontSize: fontSize(26),
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87)),
+              Text(
+                widget.product.name,
+                style: GoogleFonts.poppins(
+                  fontSize: fontSize(26),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
               SizedBox(height: verticalSpace(4)),
-              Text(widget.product.category,
-                  style: GoogleFonts.poppins(
-                      fontSize: fontSize(16), color: Colors.grey[600])),
+              Text(
+                widget.product.category,
+                style: GoogleFonts.poppins(
+                  fontSize: fontSize(16),
+                  color: Colors.grey[600],
+                ),
+              ),
               SizedBox(height: verticalSpace(8)),
-              Text("\$${widget.product.price.toStringAsFixed(2)}",
+              Text(
+                "\$${widget.product.price.toStringAsFixed(2)}",
+                style: GoogleFonts.poppins(
+                  fontSize: fontSize(24),
+                  fontWeight: FontWeight.w600,
+                  color: Colors.deepOrange,
+                ),
+              ),
+
+              // Brand & SKU
+              if (widget.product.brand != null ||
+                  widget.product.sku != null) ...[
+                SizedBox(height: verticalSpace(12)),
+                if (widget.product.brand != null)
+                  Text(
+                    "Brand: ${widget.product.brand!}",
+                    style: GoogleFonts.poppins(
+                      fontSize: fontSize(14),
+                      color: Colors.black54,
+                    ),
+                  ),
+                if (widget.product.sku != null)
+                  Text(
+                    "SKU: ${widget.product.sku!}",
+                    style: GoogleFonts.poppins(
+                      fontSize: fontSize(14),
+                      color: Colors.black54,
+                    ),
+                  ),
+              ],
+
+              // Stock Info
+              if (widget.product.quantity != null) ...[
+                SizedBox(height: verticalSpace(8)),
+                Text(
+                  widget.product.inStock
+                      ? "In Stock (${widget.product.quantity} available)"
+                      : "Out of Stock",
                   style: GoogleFonts.poppins(
-                      fontSize: fontSize(24),
-                      fontWeight: FontWeight.w600,
-                      color: Colors.deepOrange)),
+                    fontSize: fontSize(16),
+                    fontWeight: FontWeight.w600,
+                    color: widget.product.inStock ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+
+              // Description
+              if (widget.product.description != null &&
+                  widget.product.description!.isNotEmpty) ...[
+                SizedBox(height: verticalSpace(20)),
+                Text(
+                  "Description",
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize(18),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: verticalSpace(8)),
+                Text(
+                  widget.product.description!,
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize(14),
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
 
               // Sizes
-              if (widget.product.sizes != null && widget.product.sizes!.isNotEmpty) ...[
+              if (widget.product.sizes != null &&
+                  widget.product.sizes!.isNotEmpty) ...[
                 SizedBox(height: verticalSpace(30)),
-                Text("Select Size",
-                    style: GoogleFonts.poppins(
-                        fontSize: fontSize(18), fontWeight: FontWeight.w600)),
+                Text(
+                  "Select Size",
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize(18),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 SizedBox(height: verticalSpace(12)),
                 Wrap(
                   spacing: horizontalSpace(12),
-                  children: widget.product.sizes!.map((size) {
-                    final isSelected = selectedSize == size;
-                    return ChoiceChip(
-                      label: Text(size.toString(),
-                          style: GoogleFonts.poppins(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  children:
+                      widget.product.sizes!.map((size) {
+                        final isSelected = selectedSize == size;
+                        return ChoiceChip(
+                          label: Text(
+                            size.toString(),
+                            style: GoogleFonts.poppins(
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                               color: isSelected ? Colors.white : Colors.black87,
-                              fontSize: fontSize(14))),
-                      selected: isSelected,
-                      onSelected: (_) => setState(() => selectedSize = size),
-                      selectedColor: Colors.deepOrange,
-                      backgroundColor: Colors.grey.shade200,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: horizontalSpace(14), vertical: verticalSpace(8)),
-                    );
-                  }).toList(),
+                              fontSize: fontSize(14),
+                            ),
+                          ),
+                          selected: isSelected,
+                          onSelected:
+                              (_) => setState(() => selectedSize = size),
+                          selectedColor: Colors.deepOrange,
+                          backgroundColor: Colors.grey.shade200,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalSpace(14),
+                            vertical: verticalSpace(8),
+                          ),
+                        );
+                      }).toList(),
                 ),
               ],
 
               // Colors
-              if (widget.product.colors != null && widget.product.colors!.isNotEmpty) ...[
+              if (widget.product.colors != null &&
+                  widget.product.colors!.isNotEmpty) ...[
                 SizedBox(height: verticalSpace(30)),
-                Text("Select Color",
-                    style: GoogleFonts.poppins(
-                        fontSize: fontSize(18), fontWeight: FontWeight.w600)),
+                Text(
+                  "Select Color",
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize(18),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 SizedBox(height: verticalSpace(12)),
                 Row(
-                  children: widget.product.colors!.map((color) {
-                    final isSelected = selectedColor == color;
-                    return GestureDetector(
-                      onTap: () => setState(() => selectedColor = color),
-                      child: Container(
-                        margin: EdgeInsets.only(right: horizontalSpace(12)),
-                        padding: EdgeInsets.all(horizontalSpace(3)),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: isSelected ? Colors.deepOrange : Colors.transparent,
-                              width: 2),
-                        ),
-                        child: CircleAvatar(
-                          backgroundColor: color,
-                          radius: horizontalSpace(20),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                  children:
+                      widget.product.colors!.map((color) {
+                        final isSelected = selectedColor == color;
+                        return GestureDetector(
+                          onTap: () => setState(() => selectedColor = color),
+                          child: Container(
+                            margin: EdgeInsets.only(right: horizontalSpace(12)),
+                            padding: EdgeInsets.all(horizontalSpace(3)),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color:
+                                    isSelected
+                                        ? Colors.deepOrange
+                                        : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: CircleAvatar(
+                              backgroundColor: color,
+                              radius: horizontalSpace(20),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                 ),
               ],
 
@@ -170,33 +278,45 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.grey.shade300,
-                            blurRadius: 8,
-                            offset: const Offset(0, 4))
+                          color: Colors.grey.shade300,
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
                     child: IconButton(
-                      icon: Icon(Icons.favorite_border,
-                          color: Colors.deepOrange, size: fontSize(28)),
+                      icon: Icon(
+                        Icons.favorite_border,
+                        color: Colors.deepOrange,
+                        size: fontSize(28),
+                      ),
                       onPressed: () {},
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: widget.product.inStock ? () {} : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepOrange,
                       padding: EdgeInsets.symmetric(
-                          horizontal: horizontalSpace(50), vertical: verticalSpace(16)),
+                        horizontal: horizontalSpace(50),
+                        vertical: verticalSpace(16),
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(horizontalSpace(12))),
+                        borderRadius: BorderRadius.circular(
+                          horizontalSpace(12),
+                        ),
+                      ),
                       shadowColor: Colors.deepOrange.shade200,
                       elevation: 5,
                     ),
-                    child: Text("Add to Cart",
-                        style: GoogleFonts.poppins(
-                            fontSize: fontSize(16),
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white)),
+                    child: Text(
+                      widget.product.inStock ? "Add to Cart" : "Out of Stock",
+                      style: GoogleFonts.poppins(
+                        fontSize: fontSize(16),
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),

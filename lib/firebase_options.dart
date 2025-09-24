@@ -42,12 +42,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBKMnYJKk8T3u1DSk9ApXmBUCQtPyHL_XI',
-    appId: '1:848203053924:web:9b88758502c1e4ca4b9871', // updated
+    appId: '1:848203053924:web:b9f38a3f8e2ea18e4b9871',
     messagingSenderId: '848203053924',
     projectId: 'sport-brands-42c8a',
     authDomain: 'sport-brands-42c8a.firebaseapp.com',
     storageBucket: 'sport-brands-42c8a.firebasestorage.app',
-    measurementId: 'G-G93KR1J3QW', // updated
+    measurementId: 'G-5D87S9GLSG',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -64,6 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '848203053924',
     projectId: 'sport-brands-42c8a',
     storageBucket: 'sport-brands-42c8a.firebasestorage.app',
+    androidClientId: '848203053924-a9nevjsgdfvvpnau7ff2593gd58d6j24.apps.googleusercontent.com',
+    iosClientId: '848203053924-oet19n7dvebgq6jq774u2tlj2ce76kv3.apps.googleusercontent.com',
     iosBundleId: 'com.example.shoeStoreApp',
   );
 
@@ -73,6 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '848203053924',
     projectId: 'sport-brands-42c8a',
     storageBucket: 'sport-brands-42c8a.firebasestorage.app',
+    androidClientId: '848203053924-a9nevjsgdfvvpnau7ff2593gd58d6j24.apps.googleusercontent.com',
+    iosClientId: '848203053924-oet19n7dvebgq6jq774u2tlj2ce76kv3.apps.googleusercontent.com',
     iosBundleId: 'com.example.shoeStoreApp',
   );
 
@@ -85,4 +89,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'sport-brands-42c8a.firebasestorage.app',
     measurementId: 'G-HHRMDJD0ZS',
   );
+
 }
