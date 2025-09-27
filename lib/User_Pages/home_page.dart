@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoe_store_app/main.dart';
 import 'product_detailes_page.dart';
 import 'profile_page.dart';
 import 'categories_page.dart';
@@ -25,12 +26,10 @@ class _HomePageState extends State<HomePage> {
     "My Profile",
   ];
 
-  // Remove pages initialization from initState
-  // We'll build pages lazily in IndexedStack
-
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
+    double h = MediaQuery.of(context).size.height;
 
     return Scaffold(
       appBar: AppBar(
@@ -40,37 +39,47 @@ class _HomePageState extends State<HomePage> {
         title: Text(
           pageTitles[_selectedIndex],
           style: TextStyle(
-              color: Colors.black,
-              fontSize: w * 0.05,
-              fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: w * 0.05,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        actions: _selectedIndex == 0
-            ? [
-                IconButton(
-                  icon: Icon(Icons.notifications, color: Colors.black, size: w * 0.07),
-                  onPressed: () {
-                    Navigator.push(
+        actions:
+            _selectedIndex == 0
+                ? [
+                  IconButton(
+                    icon: Icon(
+                      Icons.notifications,
+                      color: Colors.black,
+                      size: w * 0.07,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const NotificationScreen()));
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.list, color: Colors.black, size: w * 0.07),
-                  onPressed: () {
-                    Navigator.push(
+                          builder: (_) => const NotificationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.list, color: Colors.black, size: w * 0.07),
+                    onPressed: () {
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const CategoriesPage()));
-                  },
-                ),
-              ]
-            : null,
+                          builder: (_) => const CategoriesPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ]
+                : null,
       ),
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          buildHomeBody(), // Home page lazily built here
+          buildHomeBody(w, h),
           const CartPage(),
           const WishlistPage(),
           const ProfilePage(),
@@ -82,33 +91,39 @@ class _HomePageState extends State<HomePage> {
         unselectedItemColor: Colors.grey,
         onTap: (index) => setState(() => _selectedIndex = index),
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home, size: w * 0.06), label: "Home"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart, size: w * 0.06), label: "Cart"),
+            icon: Icon(Icons.home, size: w * 0.06),
+            label: "Home",
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border, size: w * 0.06), label: "Wishlist"),
-          BottomNavigationBarItem(icon: Icon(Icons.person, size: w * 0.06), label: "Profile"),
+            icon: Icon(Icons.shopping_cart, size: w * 0.06),
+            label: "Cart",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border, size: w * 0.06),
+            label: "Wishlist",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person, size: w * 0.06),
+            label: "Profile",
+          ),
         ],
       ),
     );
   }
 
-  // Home Body with Firestore Products
-  Widget buildHomeBody() {
-    double w = MediaQuery.of(context).size.width;
-    double h = MediaQuery.of(context).size.height;
-
+  Widget buildHomeBody(double w, double h) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Optional banners
+          // Banner example
           SizedBox(
             height: h * 0.2,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.all(w * 0.03),
-              itemCount: 3, // example banner count
+              itemCount: 3,
               separatorBuilder: (_, __) => SizedBox(width: w * 0.03),
               itemBuilder: (_, index) {
                 return ClipRRect(
@@ -132,20 +147,34 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // Firestore Products Grid
+          // Firestore Products
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('products').snapshots(),
+            stream: firestore.collection('Nproducts').snapshots(),
             builder: (context, snapshot) {
+              // ✅ Correct debug print without databaseId
+              print('Firestore app name: ${firestore.app.name}');
+              print('Connection state: ${snapshot.connectionState}');
+
               if (snapshot.connectionState == ConnectionState.waiting) {
+                print('Waiting for Firestore data...');
                 return const Center(child: CircularProgressIndicator());
               }
+
+              if (snapshot.hasError) {
+                print('Firestore error: ${snapshot.error}');
+                return Center(child: Text("Error fetching products."));
+              }
+
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                print('No products found.');
                 return const Center(child: Text("No products found."));
               }
 
-              List<Product> products = snapshot.data!.docs
-                  .map((doc) => Product.fromFirestore(doc))
-                  .toList();
+              final products =
+                  snapshot.data!.docs
+                      .map((doc) => Product.fromFirestore(doc))
+                      .toList();
+              print('Loaded ${products.length} products from Firestore');
 
               return GridView.builder(
                 shrinkWrap: true,
@@ -174,32 +203,36 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(w * 0.03),
-                          child: product.image.startsWith('http')
-                              ? Image.network(
-                                  product.image,
-                                  height: h * 0.15,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.asset(
-                                  product.image,
-                                  height: h * 0.15,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
+                          child:
+                              product.image.startsWith('http')
+                                  ? Image.network(
+                                    product.image,
+                                    height: h * 0.15,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  )
+                                  : Image.asset(
+                                    product.image,
+                                    height: h * 0.15,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
                         ),
                         SizedBox(height: h * 0.01),
                         Text(
                           product.name,
                           style: TextStyle(
-                              fontWeight: FontWeight.w500, fontSize: w * 0.04),
+                            fontWeight: FontWeight.w500,
+                            fontSize: w * 0.04,
+                          ),
                         ),
                         Text(
                           "\$${product.price.toStringAsFixed(2)}",
                           style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: w * 0.04,
-                              color: Colors.deepOrange),
+                            fontWeight: FontWeight.bold,
+                            fontSize: w * 0.04,
+                            color: Colors.deepOrange,
+                          ),
                         ),
                       ],
                     ),

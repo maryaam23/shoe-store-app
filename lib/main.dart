@@ -9,7 +9,7 @@ late final FirebaseFirestore firestore; // Make it globally accessible
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -22,7 +22,7 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -34,5 +34,5 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  
+
 }
