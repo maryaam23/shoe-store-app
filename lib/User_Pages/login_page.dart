@@ -398,6 +398,7 @@ class _LoginPageState extends State<LoginPage> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
+                                    // Google button
                                     _socialIconButton(
                                       color: Colors.white,
                                       svg: _googleSvg,
@@ -423,6 +424,7 @@ class _LoginPageState extends State<LoginPage> {
                                       },
                                     ),
                                     SizedBox(width: spacing),
+                                    //facebook button
                                     _socialIconButton(
                                       color: const Color.fromARGB(
                                         255,

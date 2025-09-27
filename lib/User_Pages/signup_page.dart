@@ -548,9 +548,7 @@ class _SignupPageState extends State<SignupPage> {
 
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
-                                setState(() {
-                                  _isLoading = true;
-                                });
+                                setState(() => _isLoading = true);
 
                                 try {
                                   // 1️⃣ Create user with email & password
@@ -588,41 +586,9 @@ class _SignupPageState extends State<SignupPage> {
                                       "📩 Verification email sent! Please check your inbox.",
                                       color: Colors.green,
                                     );
-                                    
 
-                                    // 4️⃣ Wait until email is verified
-                                    bool isVerified = false;
-                                    while (!isVerified) {
-                                      print(
-                                        "🔄 Checking verification status...",
-                                      );
-
-                                      await Future.delayed(
-                                        const Duration(seconds: 3),
-                                      );
-
-                                      await user?.reload(); // Refresh user state
-                                      user = FirebaseAuth.instance.currentUser;
-
-                                      isVerified = user?.emailVerified ?? false;
-                                      print(
-                                        "✅ Email verified status: $isVerified",
-                                      );
-                                    }
-
-                                    // 5️⃣ When verified
-                                    print("🎉 User has verified their email!");
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const LoginPage(),
-                                      ),
-                                    );
-
-                                    // Save user info to Firestore
-                                    // 1️⃣ Build payment method dynamically
+                                    // 4️⃣ Build payment method dynamically
                                     Map<String, dynamic> paymentMethod;
-
                                     if (_selectedPayment == "Visa") {
                                       paymentMethod = {
                                         "type": "Visa",
@@ -637,10 +603,10 @@ class _SignupPageState extends State<SignupPage> {
                                       };
                                     }
 
-                                    // 2️⃣ Save user info to Firestore
+                                    // 5️⃣ Save user info to Firestore immediately
                                     await FirebaseFirestore.instance
                                         .collection("users")
-                                        .doc(user!.uid)
+                                        .doc(user.uid)
                                         .set({
                                           "fullName":
                                               _nameController.text.trim(),
@@ -662,10 +628,8 @@ class _SignupPageState extends State<SignupPage> {
                                           },
                                         });
 
-                                    // 6️⃣ Sign out so they log in fresh
+                                    // 6️⃣ Sign out so user can log in fresh
                                     await FirebaseAuth.instance.signOut();
-                                    await user.reload();
-                                    print ("iam here");
 
                                     // 7️⃣ Navigate to LoginPage
                                     Navigator.pushReplacement(
@@ -674,7 +638,6 @@ class _SignupPageState extends State<SignupPage> {
                                         builder: (_) => const LoginPage(),
                                       ),
                                     );
-                                    print("i dont go to the login page whyyyyyyyyy");
                                   }
                                 } on FirebaseAuthException catch (e) {
                                   String message;

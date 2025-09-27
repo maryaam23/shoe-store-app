@@ -14,11 +14,8 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // ✅ Initialize custom Firestore database
-  firestore = FirebaseFirestore.instanceFor(
-    app: Firebase.app(),
-    databaseId: "sport-brands-database",
-  );
+   // Use the default Firestore database
+  firestore = FirebaseFirestore.instance;
 
   runApp(const MyApp());
 }

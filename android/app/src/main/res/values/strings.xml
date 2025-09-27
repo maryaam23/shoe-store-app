@@ -3,5 +3,6 @@
 
     <!-- Facebook App ID -->
     <string name="facebook_app_id">744888701718120</string>
+    <string name="facebook_client_token">52c77b508251deab294a073a23f32231</string>
     <string name="fb_login_protocol_scheme">fb744888701718120</string>
 </resources>
