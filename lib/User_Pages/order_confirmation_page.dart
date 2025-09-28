@@ -1,115 +1,168 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'home_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class OrderConfirmationPage extends StatelessWidget {
-  const OrderConfirmationPage({super.key});
+  final double subtotal;
+  final double shipping;
+  final double total;
+  final String orderNumber; // Use this for both UI & PDF
+
+  const OrderConfirmationPage({
+    super.key,
+    required this.subtotal,
+    required this.shipping,
+    required this.total,
+    required this.orderNumber,
+  });
 
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
     double h = MediaQuery.of(context).size.height;
+    final dateNow = DateTime.now();
+    final formattedDate = "${dateNow.day}/${dateNow.month}/${dateNow.year}";
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF8FAFC),
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black, size: w * 0.07),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        title: Text(
-          "Order Confirmation",
-          style: GoogleFonts.inter(
-            fontSize: w * 0.05,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.only(bottom: h * 0.02), // space at bottom
+            padding: EdgeInsets.symmetric(horizontal: w * 0.04),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(height: h * 0.02),
+                SizedBox(height: h * 0.05),
+
+                // Success Icon
+                Container(
+                  width: w * 0.25,
+                  height: w * 0.25,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.green.shade100,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: w * 0.25,
+                  ),
+                ),
+                SizedBox(height: h * 0.03),
+
                 Text(
-                  "Thank you for your order!",
+                  "Thank You!",
                   style: GoogleFonts.inter(
-                    fontSize: w * 0.07,
+                    fontSize: w * 0.08,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF0D141C),
+                    color: Colors.black87,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: h * 0.01),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: w * 0.06),
-                  child: Text(
-                    "Your order has been placed successfully.\nYou will receive an email confirmation shortly.",
-                    style: GoogleFonts.inter(
-                      fontSize: w * 0.035,
-                      color: const Color(0xFF0D141C),
+                Text(
+                  "Your order has been placed successfully.",
+                  style: GoogleFonts.inter(
+                    fontSize: w * 0.04,
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: h * 0.03),
+
+                // Order Info Card
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(w * 0.04),
+                  ),
+                  elevation: 3,
+                  child: Padding(
+                    padding: EdgeInsets.all(w * 0.04),
+                    child: Column(
+                      children: [
+                        _infoRow(w, Icons.tag, "Order Number", orderNumber),
+                        Divider(),
+                        _infoRow(
+                          w,
+                          Icons.date_range,
+                          "Order Date",
+                          formattedDate,
+                        ),
+                        Divider(),
+                        _infoRow(
+                          w,
+                          Icons.local_shipping,
+                          "Estimated Delivery",
+                          "2 - 3 Business Days",
+                        ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
                 SizedBox(height: h * 0.03),
 
-                // Banner image
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: w * 0.04),
-                  height: h * 0.25,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(w * 0.03),
-                    image: const DecorationImage(
-                      fit: BoxFit.cover,
-                      image: NetworkImage(
-                        "https://lh3.googleusercontent.com/aida-public/AB6AXuDqMH0x0b3emKPOGeY3O7PSEFEsRZA7XCipCPEvz6T8ELU9ikXfQH_X6WAgYyvK3jC3tPx0aOODH4gheMfLQ8dmqxBJjX8JshqPjIrzG4vEYCPbFElFKaqWkbffxaexIA0-IVm_pFzBxEY3JHu4bwMopgpK4_VGen0kuFRka77fwLO3aCwEtK3Ua6hwUVvI7a_4PREdhzai4uyDVNJqHBxYsIKdRe3tUJH18sLOtrfugepe1vXJoZMIrEjZMszIHmPw2nZAPKv_lW0J",
-                      ),
+                // Order Summary Card
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(w * 0.04),
+                  ),
+                  elevation: 3,
+                  child: Padding(
+                    padding: EdgeInsets.all(w * 0.04),
+                    child: Column(
+                      children: [
+                        _summaryRow(
+                          "Subtotal",
+                          "₪${subtotal.toStringAsFixed(2)}",
+                          w,
+                        ),
+                        _summaryRow(
+                          "Shipping",
+                          "₪${shipping.toStringAsFixed(2)}",
+                          w,
+                        ),
+                        Divider(),
+                        _summaryRow(
+                          "Total",
+                          "₪${total.toStringAsFixed(2)}",
+                          w,
+                          bold: true,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                SizedBox(height: h * 0.03),
-
-                // Info tiles
-                _infoTile(w: w, h: h, icon: Icons.tag, title: "Order Number", subtitle: "1234567890"),
-                _infoTile(
-                    w: w, h: h, icon: Icons.local_shipping, title: "Estimated Delivery", subtitle: "June 15, 2024"),
-
-                SizedBox(height: h * 0.02),
-
-                // Track Order Button
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: w * 0.04, vertical: h * 0.015),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D78F2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(w * 0.03)),
-                      padding: EdgeInsets.symmetric(vertical: h * 0.018),
-                    ),
-                    onPressed: () {},
-                    child: Text("Track Order",
-                        style: GoogleFonts.inter(
-                            fontSize: w * 0.045, fontWeight: FontWeight.bold, color: Colors.white)),
-                  ),
-                ),
+                SizedBox(height: h * 0.04),
 
                 // Secondary Buttons Row
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: w * 0.04, vertical: h * 0.01),
-                  child: Row(
-                    children: [
-                      Expanded(child: _secondaryButton(w, h, "Share Receipt", () {})),
-                      SizedBox(width: w * 0.03),
-                      Expanded(child: _secondaryButton(w, h, "Continue Shopping", () {})),
-                    ],
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _secondaryButton(
+                        w,
+                        h,
+                        "Share Receipt",
+                        () => _shareReceiptAsPDF(orderNumber, formattedDate),
+                      ),
+                    ),
+                    SizedBox(width: w * 0.03),
+                    Expanded(
+                      child: _secondaryButton(
+                        w,
+                        h,
+                        "Continue Shopping",
+                        () => _continueShopping(context),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: h * 0.02),
+                SizedBox(height: h * 0.05),
               ],
             ),
           ),
@@ -118,35 +171,174 @@ class OrderConfirmationPage extends StatelessWidget {
     );
   }
 
-  Widget _infoTile({
-    required double w,
-    required double h,
-    required IconData icon,
-    required String title,
-    required String subtitle,
+  // ----------------- BUTTON FUNCTIONS -----------------
+  Future<void> _shareReceiptAsPDF(String orderNumber, String date) async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    String customerName = "Customer"; // default
+    String customerPhone = "N/A"; // default phone
+
+    if (userId != null) {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        customerName = data['fullName'] ?? "Customer";
+        customerPhone = data['phone'] ?? "N/A";
+      }
+    }
+
+    final pdf = pw.Document();
+
+    // Load font that supports ₪
+    final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final ttf = pw.Font.ttf(fontData);
+
+    // Load logo as bytes
+    final logoBytes = await rootBundle.load('assets/logoImage.png');
+    final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+
+    pdf.addPage(
+      pw.Page(
+        build:
+            (context) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Shop Logo + Name
+                pw.Row(
+                  children: [
+                    pw.Image(logoImage, width: 60, height: 60),
+                    pw.SizedBox(width: 10),
+                    pw.Text(
+                      "SPORT BRANDS",
+                      style: pw.TextStyle(
+                        font: ttf,
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Divider(height: 20, thickness: 2),
+                pw.Text(
+                  " Order Confirmation ",
+                  style: pw.TextStyle(
+                    font: ttf,
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 15),
+                pw.Text(
+                  "Customer Name: $customerName",
+                  style: pw.TextStyle(font: ttf),
+                ),
+                pw.Text(
+                  "Phone Number: $customerPhone",
+                  style: pw.TextStyle(font: ttf),
+                ),
+                pw.Text(
+                  "Order Number: #$orderNumber",
+                  style: pw.TextStyle(font: ttf),
+                ),
+                pw.Text("Order Date: $date", style: pw.TextStyle(font: ttf)),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  "Subtotal: ₪${subtotal.toStringAsFixed(2)}",
+                  style: pw.TextStyle(font: ttf),
+                ),
+                pw.Text(
+                  "Shipping: ₪${shipping.toStringAsFixed(2)}",
+                  style: pw.TextStyle(font: ttf),
+                ),
+                pw.Text(
+                  "Total: ₪${total.toStringAsFixed(2)}",
+                  style: pw.TextStyle(font: ttf),
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text(
+                  "Thank you for shopping with us!",
+                  style: pw.TextStyle(font: ttf),
+                ),
+              ],
+            ),
+      ),
+    );
+
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/order_receipt.pdf');
+    await file.writeAsBytes(await pdf.save());
+
+    Share.shareXFiles([XFile(file.path)], text: 'Your Order Receipt');
+  }
+
+  void _continueShopping(BuildContext context) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomePage()),
+      (route) => false,
+    );
+  }
+
+  // ----------------- UI HELPERS -----------------
+  Widget _infoRow(double w, IconData icon, String title, String value) {
+    return Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: const Color(0xFFE7EDF4),
+          radius: w * 0.06,
+          child: Icon(icon, color: Colors.black87, size: w * 0.06),
+        ),
+        SizedBox(width: w * 0.04),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: w * 0.04,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              value,
+              style: GoogleFonts.inter(
+                fontSize: w * 0.035,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryRow(
+    String label,
+    String value,
+    double w, {
+    bool bold = false,
   }) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: w * 0.04, vertical: h * 0.012),
+      padding: EdgeInsets.symmetric(vertical: w * 0.01),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          CircleAvatar(
-            backgroundColor: const Color(0xFFE7EDF4),
-            radius: w * 0.06,
-            child: Icon(icon, color: Colors.black, size: w * 0.06),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: w * 0.04,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
-          SizedBox(width: w * 0.03),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: GoogleFonts.inter(
-                      fontSize: w * 0.04,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0D141C))),
-              SizedBox(height: h * 0.002),
-              Text(subtitle,
-                  style: GoogleFonts.inter(fontSize: w * 0.035, color: const Color(0xFF49709C))),
-            ],
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: w * 0.04,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         ],
       ),
@@ -157,17 +349,18 @@ class OrderConfirmationPage extends StatelessWidget {
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
         backgroundColor: const Color(0xFFE7EDF4),
-        foregroundColor: const Color(0xFF0D141C),
-        padding: EdgeInsets.symmetric(vertical: h * 0.012),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(w * 0.03)),
+        foregroundColor: Colors.black87,
+        padding: EdgeInsets.symmetric(vertical: h * 0.015),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(w * 0.03),
+        ),
       ),
       onPressed: onTap,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          text,
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: w * 0.035),
-          textAlign: TextAlign.center,
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.bold,
+          fontSize: w * 0.035,
         ),
       ),
     );

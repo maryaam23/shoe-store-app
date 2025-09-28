@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoe_store_app/main.dart';
 import 'product_detailes_page.dart';
 import 'profile_page.dart';
 import 'categories_page.dart';
@@ -8,6 +7,7 @@ import 'wishlist_page.dart';
 import 'cart_page.dart';
 import 'user_notification_page.dart';
 import 'product_page.dart'; // your Product model
+import '../firestore_service.dart'; // FirestoreService class
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,12 +27,20 @@ class _HomePageState extends State<HomePage> {
 
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
+  // Local state to track added items
+  Set<String> cartItems = {};
+  Set<String> wishlistItems = {};
+
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
     double h = MediaQuery.of(context).size.height;
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child:Scaffold(
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.grey[50],
@@ -146,7 +154,9 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+      ),
     );
+    
   }
 
   Widget buildHomeBody(double w, double h) {
@@ -201,7 +211,10 @@ class _HomePageState extends State<HomePage> {
               return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: w * 0.04),
+                padding: EdgeInsets.symmetric(
+                  horizontal: w * 0.04,
+                  vertical: h * 0.02,
+                ),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: h * 0.015,
@@ -211,6 +224,10 @@ class _HomePageState extends State<HomePage> {
                 itemCount: products.length,
                 itemBuilder: (context, index) {
                   final product = products[index];
+
+                  final isInCart = cartItems.contains(product.id);
+                  final isInWishlist = wishlistItems.contains(product.id);
+
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -220,43 +237,146 @@ class _HomePageState extends State<HomePage> {
                         ),
                       );
                     },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(w * 0.03),
-                          child:
-                              product.image.startsWith('http')
-                                  ? Image.network(
-                                    product.image,
-                                    height: h * 0.15,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  )
-                                  : Image.asset(
-                                    product.image,
-                                    height: h * 0.15,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(w * 0.01),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(w * 0.01),
+                              child:
+                                  product.image.startsWith('http')
+                                      ? Image.network(
+                                        product.image,
+                                        height: h * 0.2,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Image.asset(
+                                        product.image,
+                                        height: h * 0.2,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      ),
+                            ),
+                            SizedBox(height: h * 0.01),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: w * 0.02,
+                              ),
+                              child: Text(
+                                product.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: w * 0.05,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: h * 0.005),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: w * 0.02,
+                              ),
+                              child: Text(
+                                "₪${product.price.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: w * 0.04,
+                                  color: const Color.fromARGB(
+                                    255,
+                                    254,
+                                    111,
+                                    68,
                                   ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: h * 0.02),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: w * 0.02,
+                              ),
+                              child: Row(
+                                children: [
+                                  SizedBox(width: w * 0.06),
+                                  // Add to Cart icon
+                                  Container(
+                                    width: w * 0.12,
+                                    height: h * 0.05,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isInCart
+                                              ? Colors.green
+                                              : const Color.fromARGB(
+                                                255,
+                                                246,
+                                                79,
+                                                67,
+                                              ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      iconSize: w * 0.06,
+                                      icon: const Icon(
+                                        Icons.add_shopping_cart_outlined,
+                                        color: Colors.white,
+                                      ),
+                                      onPressed: () async {
+                                        await FirestoreService.addToCart(
+                                          product,
+                                        );
+                                        setState(() {
+                                          cartItems.add(product.id);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(width: w * 0.04),
+                                  // Wishlist love icon
+                                  Container(
+                                    width: w * 0.12,
+                                    height: h * 0.05,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isInWishlist
+                                              ? Colors.pink
+                                              : const Color.fromARGB(
+                                                255,
+                                                246,
+                                                79,
+                                                67,
+                                              ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      iconSize: w * 0.055,
+                                      icon: const Icon(
+                                        Icons.favorite,
+                                        color: Colors.white,
+                                      ),
+                                      onPressed: () async {
+                                        await FirestoreService.addToWishlist(
+                                          product,
+                                        );
+                                        setState(() {
+                                          wishlistItems.add(product.id);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: h * 0.01),
-                        Text(
-                          product.name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: w * 0.04,
-                          ),
-                        ),
-                        Text(
-                          "\$${product.price.toStringAsFixed(2)}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: w * 0.04,
-                            color: Colors.deepOrange,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 },

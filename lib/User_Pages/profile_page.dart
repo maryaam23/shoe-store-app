@@ -24,7 +24,6 @@ class _ProfilePageState extends State<ProfilePage> {
     "Ramallah",
     "Nablus",
     "Hebron",
-    "Gaza",
     "Jenin",
     "Tulkarm",
     "Bethlehem",
@@ -59,6 +58,9 @@ class _ProfilePageState extends State<ProfilePage> {
           })
           .catchError((e) {
             debugPrint("Error loading user data in initState: $e");
+
+
+            
           });
     }
   }
