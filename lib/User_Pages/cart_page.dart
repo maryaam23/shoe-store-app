@@ -14,24 +14,42 @@ class CartPage extends StatefulWidget {
 class _CartPageState extends State<CartPage> {
   final user = FirebaseAuth.instance.currentUser;
 
-  void _increaseQty(String productId, int currentQty) {
+  void _increaseQty(String cartId, int currentQty) {
     FirebaseFirestore.instance
         .collection("users")
         .doc(user!.uid)
         .collection("cart")
-        .doc(productId)
+        .doc(cartId)
         .update({"quantity": currentQty + 1});
   }
 
-  void _decreaseQty(String productId, int currentQty) {
+  void _decreaseQty(String cartId, int currentQty) {
     if (currentQty > 1) {
       FirebaseFirestore.instance
           .collection("users")
           .doc(user!.uid)
           .collection("cart")
-          .doc(productId)
+          .doc(cartId)
           .update({"quantity": currentQty - 1});
     }
+  }
+
+  void _updateSize(String cartId, int newSize) {
+    FirebaseFirestore.instance
+        .collection("users")
+        .doc(user!.uid)
+        .collection("cart")
+        .doc(cartId)
+        .update({"size": newSize});
+  }
+
+  void _updateColor(String cartId, int newColor) {
+    FirebaseFirestore.instance
+        .collection("users")
+        .doc(user!.uid)
+        .collection("cart")
+        .doc(cartId)
+        .update({"color": newColor});
   }
 
   double _calculateSubtotal(List<QueryDocumentSnapshot> cartDocs) {
@@ -39,6 +57,78 @@ class _CartPageState extends State<CartPage> {
       0,
       (sum, doc) => sum + (doc["price"] * doc["quantity"]),
     );
+  }
+
+  Future<void> _selectSize(String cartId, List<dynamic> sizes) async {
+    int? selectedSize = await showDialog<int>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Select Size"),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: sizes.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(sizes[index].toString()),
+                    onTap: () {
+                      Navigator.pop(context, sizes[index]);
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+    );
+
+    if (selectedSize != null) {
+      _updateSize(cartId, selectedSize);
+    }
+  }
+
+  Future<void> _selectColor(String cartId, List<dynamic> colors) async {
+    int? selectedColor = await showDialog<int>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Select Color"),
+            content: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children:
+                  colors.map<Widget>((colorValue) {
+                    return GestureDetector(
+                      onTap:
+                          () => Navigator.pop(
+                            context,
+                            int.parse(
+                              colorValue.toString().replaceFirst("#", "0xFF"),
+                            ),
+                          ),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Color(
+                            int.parse(
+                              colorValue.toString().replaceFirst("#", "0xFF"),
+                            ),
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey.shade400),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+            ),
+          ),
+    );
+
+    if (selectedColor != null) {
+      _updateColor(cartId, selectedColor);
+    }
   }
 
   @override
@@ -84,160 +174,207 @@ class _CartPageState extends State<CartPage> {
                 child: ListView.builder(
                   itemCount: cartDocs.length,
                   itemBuilder: (context, index) {
-                    final item = cartDocs[index];
-                    final productId = item.id;
+                    final cartItem = cartDocs[index];
+                    final cartId = cartItem.id;
+                    final productId = cartItem['id'];
 
-                    return Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: w * 0.01,
-                        vertical: h * 0.015,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Color(0xFFE7EDF4),
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Product image
-                          Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(w * 0.02),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(w * 0.02),
-                              child:
-                                  (item.data().toString().contains("image") &&
-                                          item["image"] != null)
-                                      ? Image.network(
-                                        item["image"],
-                                        width: w * 0.22,
-                                        height: w * 0.22,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : Icon(Icons.image, size: w * 0.18),
-                            ),
-                          ),
-                          SizedBox(width: w * 0.01),
+                    // Fetch product document to get all sizes/colors
+                    return FutureBuilder<DocumentSnapshot>(
+                      future:
+                          FirebaseFirestore.instance
+                              .collection('Nproducts')
+                              .doc(productId)
+                              .get(),
+                      builder: (context, productSnapshot) {
+                        if (!productSnapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
 
-                          // Product info + Quantity
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Product info
-                                Flexible(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item["name"],
-                                        style: GoogleFonts.inter(
-                                          fontSize: 16 * textScale,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF0D141C),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      SizedBox(height: h * 0.004),
-                                      Text(
-                                        "₪${item["price"]}",
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14 * textScale,
-                                          color: const Color(0xFF49709C),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
+                        final productData = productSnapshot.data!;
+                        final sizes = List<dynamic>.from(
+                          productData['sizes'] ?? [],
+                        );
+                        final colors = List<dynamic>.from(
+                          productData['colors'] ?? [],
+                        );
+
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: w * 0.01,
+                            vertical: h * 0.015,
+                          ),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Color(0xFFE7EDF4),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Product image
+                              Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(w * 0.02),
                                 ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(w * 0.02),
+                                  child:
+                                      (cartItem.data().toString().contains(
+                                                "image",
+                                              ) &&
+                                              cartItem["image"] != null)
+                                          ? Image.network(
+                                            cartItem["image"],
+                                            width: w * 0.22,
+                                            height: w * 0.22,
+                                            fit: BoxFit.cover,
+                                          )
+                                          : Icon(Icons.image, size: w * 0.18),
+                                ),
+                              ),
+                              SizedBox(width: w * 0.01),
 
-                                // Quantity controls + Delete
-                                Row(
-                                  mainAxisSize:
-                                      MainAxisSize.min, // shrink to content
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.end, // push to right
+                              // Product info + Quantity
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Decrease button
-                                    IconButton(
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 0,
-                                        minHeight: 0,
+                                    Text(
+                                      cartItem["name"],
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16 * textScale,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF0D141C),
                                       ),
-                                      icon: Icon(
-                                        Icons.remove,
-                                        size: 18 * textScale,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    SizedBox(height: h * 0.004),
+                                    Text(
+                                      "₪${cartItem["price"]}",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14 * textScale,
+                                        color: const Color(0xFF49709C),
                                       ),
-                                      onPressed:
-                                          () => _decreaseQty(
-                                            productId,
-                                            item["quantity"],
-                                          ),
                                     ),
 
-                                    // Quantity text
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 2,
-                                      ), // small spacing
-                                      child: Text(
-                                        "${item["quantity"]}",
-                                        style: GoogleFonts.inter(
-                                          fontSize: 15 * textScale,
-                                          fontWeight: FontWeight.w500,
+                                    // Size selection
+                                    GestureDetector(
+                                      onTap: () => _selectSize(cartId, sizes),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 4,
+                                        ),
+                                        child: Text(
+                                          "Size: ${cartItem["size"]}",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13 * textScale,
+                                            color: Colors.black87,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
                                         ),
                                       ),
                                     ),
 
-                                    // Increase button
-                                    IconButton(
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 0,
-                                        minHeight: 0,
-                                      ),
-                                      icon: Icon(
-                                        Icons.add,
-                                        size: 18 * textScale,
-                                      ),
-                                      onPressed:
-                                          () => _increaseQty(
-                                            productId,
-                                            item["quantity"],
+                                    // Color selection
+                                    GestureDetector(
+                                      onTap: () => _selectColor(cartId, colors),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            "Color: ",
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13 * textScale,
+                                              color: Colors.black87,
+                                            ),
                                           ),
+                                          Container(
+                                            width: 16,
+                                            height: 16,
+                                            decoration: BoxDecoration(
+                                              color: Color(cartItem["color"]),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.grey.shade400,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
 
-                                    // Delete button
-                                    IconButton(
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 0,
-                                        minHeight: 0,
-                                      ),
-                                      icon: Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                        size: 18 * textScale,
-                                      ),
-                                      onPressed:
-                                          () => _removeFromCart(productId),
+                                    // Quantity controls + Delete
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(
+                                                minWidth: 0,
+                                                minHeight: 0,
+                                              ),
+                                              icon: const Icon(Icons.remove),
+                                              onPressed:
+                                                  () => _decreaseQty(
+                                                    cartId,
+                                                    cartItem["quantity"],
+                                                  ),
+                                            ),
+                                            Text(
+                                              "${cartItem["quantity"]}",
+                                              style: GoogleFonts.inter(
+                                                fontSize: 15 * textScale,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            IconButton(
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(
+                                                minWidth: 0,
+                                                minHeight: 0,
+                                              ),
+                                              icon: const Icon(Icons.add),
+                                              onPressed:
+                                                  () => _increaseQty(
+                                                    cartId,
+                                                    cartItem["quantity"],
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                        IconButton(
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 0,
+                                            minHeight: 0,
+                                          ),
+                                          icon: Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                            size: 18 * textScale,
+                                          ),
+                                          onPressed:
+                                              () => _removeFromCart(cartId),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -295,12 +432,12 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  void _removeFromCart(String productId) {
+  void _removeFromCart(String cartId) {
     FirebaseFirestore.instance
         .collection("users")
         .doc(user!.uid)
         .collection("cart")
-        .doc(productId)
+        .doc(cartId)
         .delete();
   }
 

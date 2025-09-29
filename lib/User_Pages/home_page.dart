@@ -6,8 +6,9 @@ import 'categories_page.dart';
 import 'wishlist_page.dart';
 import 'cart_page.dart';
 import 'user_notification_page.dart';
-import 'product_page.dart'; // your Product model
+import 'product_page.dart'; // Product model
 import '../firestore_service.dart'; // FirestoreService class
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,10 +27,17 @@ class _HomePageState extends State<HomePage> {
   ];
 
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final user = FirebaseAuth.instance.currentUser;
 
-  // Local state to track added items
-  Set<String> cartItems = {};
-  Set<String> wishlistItems = {};
+  late Stream<QuerySnapshot> cartStream;
+  late Stream<QuerySnapshot> wishlistStream;
+
+  @override
+  void initState() {
+    super.initState();
+    cartStream = FirestoreService.getCart();
+    wishlistStream = FirestoreService.getWishlist();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +45,7 @@ class _HomePageState extends State<HomePage> {
     double h = MediaQuery.of(context).size.height;
 
     return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,
@@ -65,7 +71,6 @@ class _HomePageState extends State<HomePage> {
                       builder: (context, snapshot) {
                         int unreadCount =
                             snapshot.hasData ? snapshot.data!.docs.length : 0;
-
                         return Stack(
                           children: [
                             IconButton(
@@ -167,26 +172,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner example
-          SizedBox(
-            height: h * 0.2,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.all(w * 0.03),
-              itemCount: 3,
-              separatorBuilder: (_, __) => SizedBox(width: w * 0.03),
-              itemBuilder: (_, index) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(w * 0.03),
-                  child: Image.network(
-                    "https://picsum.photos/500/200?${index + 1}",
-                    width: w * 0.6,
-                    fit: BoxFit.cover,
-                  ),
-                );
-              },
-            ),
-          ),
+          
           SizedBox(height: h * 0.02),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: w * 0.04),
@@ -195,7 +181,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: w * 0.05, fontWeight: FontWeight.bold),
             ),
           ),
-          // Firestore Products
+          // Firestore Products + Streams for cart/wishlist
           StreamBuilder<QuerySnapshot>(
             stream: firestore.collection('Nproducts').snapshots(),
             builder: (context, snapshot) {
@@ -211,194 +197,207 @@ class _HomePageState extends State<HomePage> {
                       .map((doc) => Product.fromFirestore(doc))
                       .toList();
 
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: w * 0.04,
-                  vertical: h * 0.02,
-                ),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: h * 0.015,
-                  crossAxisSpacing: w * 0.03,
-                  childAspectRatio: 0.7,
-                ),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final product = products[index];
+              return StreamBuilder<QuerySnapshot>(
+                stream: wishlistStream,
+                builder: (context, wishlistSnap) {
+                  final wishlistIds =
+                      wishlistSnap.hasData
+                          ? wishlistSnap.data!.docs.map((d) => d.id).toSet()
+                          : <String>{};
 
-                  final isInCart = cartItems.contains(product.id);
-                  final isInWishlist = wishlistItems.contains(product.id);
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: cartStream,
+                    builder: (context, cartSnap) {
+                      final cartIds =
+                          cartSnap.hasData
+                              ? cartSnap.data!.docs.map((d) => d.id).toSet()
+                              : <String>{};
 
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ProductDetailPage(product: product),
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: w * 0.04,
+                          vertical: h * 0.02,
                         ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(w * 0.01),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: IntrinsicHeight(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(w * 0.01),
-                              child:
-                                  product.image.startsWith('http')
-                                      ? Image.network(
-                                        product.image,
-                                        height: h * 0.2,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : Image.asset(
-                                        product.image,
-                                        height: h * 0.2,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
-                            ),
-                            SizedBox(height: h * 0.01),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: w * 0.02,
-                              ),
-                              child: Text(
-                                product.name,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: w * 0.05,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: h * 0.015,
+                          crossAxisSpacing: w * 0.03,
+                          childAspectRatio: 0.7,
+                        ),
+                        itemCount: products.length,
+                        itemBuilder: (context, index) {
+                          final product = products[index];
+                          final isInCart = cartIds.contains(product.id);
+                          final isInWishlist = wishlistIds.contains(product.id);
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) =>
+                                          ProductDetailPage(product: product),
                                 ),
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(w * 0.01),
+                                border: Border.all(color: Colors.grey.shade300),
                               ),
-                            ),
-                            SizedBox(height: h * 0.005),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: w * 0.02,
-                              ),
-                              child: Text(
-                                "₪${product.price.toStringAsFixed(2)}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: w * 0.04,
-                                  color: const Color.fromARGB(
-                                    255,
-                                    254,
-                                    111,
-                                    68,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: h * 0.02),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: w * 0.02,
-                              ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  SizedBox(width: w * 0.06),
-                                  // Add to Cart icon
-                                  Container(
-                                    width: w * 0.12,
-                                    height: h * 0.05,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          isInCart
-                                              ? Colors.green
-                                              : const Color.fromARGB(
-                                                255,
-                                                246,
-                                                79,
-                                                67,
-                                              ),
-                                      borderRadius: BorderRadius.circular(8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(
+                                      w * 0.01,
                                     ),
-                                    child: IconButton(
-                                      padding: EdgeInsets.zero,
-                                      iconSize: w * 0.06,
-                                      icon: const Icon(
-                                        Icons.add_shopping_cart_outlined,
-                                        color: Colors.white,
+                                    child:
+                                        product.image.startsWith('http')
+                                            ? Image.network(
+                                              product.image,
+                                              height: h * 0.2,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                            )
+                                            : Image.asset(
+                                              product.image,
+                                              height: h * 0.2,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                            ),
+                                  ),
+                                  SizedBox(height: h * 0.01),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.02,
+                                    ),
+                                    child: Text(
+                                      product.name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: w * 0.05,
                                       ),
-                                      onPressed: () async {
-                                        if (isInCart) {
-                                          await FirestoreService.removeFromCart(
-                                            product.id,
-                                          );
-                                          setState(() {
-                                            cartItems.remove(product.id);
-                                          });
-                                        } else {
-                                          await FirestoreService.addToCart(
-                                            product,
-                                          );
-                                          setState(() {
-                                            cartItems.add(product.id);
-                                          });
-                                        }
-                                      },
                                     ),
                                   ),
-                                  SizedBox(width: w * 0.04),
-                                  // Wishlist love icon
-                                  Container(
-                                    width: w * 0.12,
-                                    height: h * 0.05,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          isInWishlist
-                                              ? Colors.pink
-                                              : const Color.fromARGB(
-                                                255,
-                                                246,
-                                                79,
-                                                67,
-                                              ),
-                                      borderRadius: BorderRadius.circular(8),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.02,
                                     ),
-                                    child: IconButton(
-                                      padding: EdgeInsets.zero,
-                                      iconSize: w * 0.055,
-                                      icon: const Icon(
-                                        Icons.favorite,
-                                        color: Colors.white,
+                                    child: Text(
+                                      "₪${product.price.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: w * 0.04,
+                                        color: Colors.deepOrange,
                                       ),
-                                      onPressed: () async {
-                                        if (isInWishlist) {
-                                          await FirestoreService.removeFromWishlist(
-                                            product.id,
-                                          );
-                                          setState(() {
-                                            wishlistItems.remove(product.id);
-                                          });
-                                        } else {
-                                          await FirestoreService.addToWishlist(
-                                            product,
-                                          );
-                                          setState(() {
-                                            wishlistItems.add(product.id);
-                                          });
-                                        }
-                                      },
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.02,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Add to Cart
+                                        Container(
+                                          width: w * 0.12,
+                                          height: h * 0.05,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                isInCart
+                                                    ? Colors.green
+                                                    : Colors.deepOrange,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            iconSize: w * 0.06,
+                                            icon: const Icon(
+                                              Icons.add_shopping_cart_outlined,
+                                              color: Colors.white,
+                                            ),
+                                            onPressed: () async {
+                                              if (isInCart) {
+                                                await FirestoreService.removeFromCart(
+                                                  product.id,
+                                                );
+                                              } else {
+                                                // ❗ Default size & color
+                                                int defaultSize =
+                                                    (product.sizes != null &&
+                                                            product
+                                                                .sizes!
+                                                                .isNotEmpty)
+                                                        ? product.sizes!.first
+                                                        : 0;
+                                                Color defaultColor =
+                                                    (product.colors != null &&
+                                                            product
+                                                                .colors!
+                                                                .isNotEmpty)
+                                                        ? product.colors!.first
+                                                        : Colors.black;
+
+                                                await FirestoreService.addToCart(
+                                                  product,
+                                                  size: defaultSize,
+                                                  color: defaultColor,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(width: w * 0.04),
+                                        // Wishlist
+                                        Container(
+                                          width: w * 0.12,
+                                          height: h * 0.05,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                isInWishlist
+                                                    ? Colors.pink
+                                                    : Colors.deepOrange,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            iconSize: w * 0.055,
+                                            icon: const Icon(
+                                              Icons.favorite,
+                                              color: Colors.white,
+                                            ),
+                                            onPressed: () async {
+                                              if (isInWishlist) {
+                                                await FirestoreService.removeFromWishlist(
+                                                  product.id,
+                                                );
+                                              } else {
+                                                await FirestoreService.addToWishlist(
+                                                  product,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          );
+                        },
+                      );
+                    },
                   );
                 },
               );

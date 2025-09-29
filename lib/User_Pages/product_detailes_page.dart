@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'product_page.dart';
+import '../firestore_service.dart'; // ✅ Import Firestore service
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ========================
 // Product Detail Page
@@ -17,14 +20,51 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   int selectedSize = 0;
   Color selectedColor = Colors.black;
 
+  final user = FirebaseAuth.instance.currentUser;
+
+  bool isInCart = false;
+  bool isInWishlist = false;
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? cartItemStream;
+
   @override
   void initState() {
     super.initState();
+
     if (widget.product.sizes != null && widget.product.sizes!.isNotEmpty) {
       selectedSize = widget.product.sizes!.first;
     }
     if (widget.product.colors != null && widget.product.colors!.isNotEmpty) {
       selectedColor = widget.product.colors!.first;
+    }
+
+    // ✅ Initialize wishlist & cart status
+    FirestoreService.isInCart(widget.product.id).then((value) {
+      setState(() => isInCart = value);
+    });
+    FirestoreService.isInWishlist(widget.product.id).then((value) {
+      setState(() => isInWishlist = value);
+    });
+
+    // ✅ Listen to the cart item in real-time
+    if (user != null) {
+      cartItemStream =
+          FirebaseFirestore.instance
+              .collection("users")
+              .doc(user!.uid)
+              .collection("cart")
+              .doc(widget.product.id)
+              .snapshots();
+
+      cartItemStream!.listen((snapshot) {
+        if (snapshot.exists && snapshot.data() != null) {
+          final data = snapshot.data()!;
+          setState(() {
+            if (data['size'] != null) selectedSize = data['size'];
+            if (data['color'] != null) selectedColor = Color(data['color']);
+          });
+        }
+      });
     }
   }
 
@@ -118,7 +158,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
               SizedBox(height: verticalSpace(8)),
               Text(
-                "\$${widget.product.price.toStringAsFixed(2)}",
+                "₪${widget.product.price.toStringAsFixed(2)}",
                 style: GoogleFonts.poppins(
                   fontSize: fontSize(24),
                   fontWeight: FontWeight.w600,
@@ -214,8 +254,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             ),
                           ),
                           selected: isSelected,
-                          onSelected:
-                              (_) => setState(() => selectedSize = size),
+                          onSelected: (_) async {
+                            setState(() => selectedSize = size);
+                            // Update Firestore if in cart
+                            if (isInCart) {
+                              await FirestoreService.updateCartSize(
+                                widget.product.id,
+                                size,
+                              );
+                            }
+                          },
                           selectedColor: Colors.deepOrange,
                           backgroundColor: Colors.grey.shade200,
                           padding: EdgeInsets.symmetric(
@@ -244,7 +292,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       widget.product.colors!.map((color) {
                         final isSelected = selectedColor == color;
                         return GestureDetector(
-                          onTap: () => setState(() => selectedColor = color),
+                          onTap: () async {
+                            setState(() => selectedColor = color);
+                            if (isInCart) {
+                              await FirestoreService.updateCartColor(
+                                widget.product.id,
+                                color,
+                              );
+                            }
+                          },
                           child: Container(
                             margin: EdgeInsets.only(right: horizontalSpace(12)),
                             padding: EdgeInsets.all(horizontalSpace(3)),
@@ -272,6 +328,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // ❤️ Wishlist Button
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -286,17 +343,45 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                     child: IconButton(
                       icon: Icon(
-                        Icons.favorite_border,
-                        color: Colors.deepOrange,
+                        isInWishlist ? Icons.favorite : Icons.favorite_border,
+                        color: isInWishlist ? Colors.pink : Colors.deepOrange,
                         size: fontSize(28),
                       ),
-                      onPressed: () {},
+                      onPressed: () async {
+                        if (isInWishlist) {
+                          await FirestoreService.removeFromWishlist(
+                            widget.product.id,
+                          );
+                        } else {
+                          await FirestoreService.addToWishlist(widget.product);
+                        }
+                        setState(() => isInWishlist = !isInWishlist);
+                      },
                     ),
                   ),
+
+                  // 🛒 Add to Cart Button
                   ElevatedButton(
-                    onPressed: widget.product.inStock ? () {} : null,
+                    onPressed:
+                        widget.product.inStock
+                            ? () async {
+                              if (isInCart) {
+                                await FirestoreService.removeFromCart(
+                                  widget.product.id,
+                                );
+                              } else {
+                                await FirestoreService.addToCart(
+                                  widget.product,
+                                  size: selectedSize,
+                                  color: selectedColor,
+                                );
+                              }
+                              setState(() => isInCart = !isInCart);
+                            }
+                            : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
+                      backgroundColor:
+                          isInCart ? Colors.green : Colors.deepOrange,
                       padding: EdgeInsets.symmetric(
                         horizontal: horizontalSpace(50),
                         vertical: verticalSpace(16),
@@ -310,7 +395,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       elevation: 5,
                     ),
                     child: Text(
-                      widget.product.inStock ? "Add to Cart" : "Out of Stock",
+                      widget.product.inStock
+                          ? (isInCart ? "Remove from Cart" : "Add to Cart")
+                          : "Out of Stock",
                       style: GoogleFonts.poppins(
                         fontSize: fontSize(16),
                         fontWeight: FontWeight.w600,
