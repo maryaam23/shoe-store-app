@@ -40,123 +40,126 @@ class _HomePageState extends State<HomePage> {
       onTap: () {
         FocusScope.of(context).unfocus();
       },
-      child:Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.grey[50],
-        centerTitle: true,
-        title: Text(
-          pageTitles[_selectedIndex],
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: w * 0.05,
-            fontWeight: FontWeight.bold,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.grey[50],
+          centerTitle: true,
+          title: Text(
+            pageTitles[_selectedIndex],
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: w * 0.05,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        actions:
-            _selectedIndex == 0
-                ? [
-                  StreamBuilder<QuerySnapshot>(
-                    stream:
-                        firestore
-                            .collection("UserNotification")
-                            .where("isRead", isEqualTo: false)
-                            .snapshots(),
-                    builder: (context, snapshot) {
-                      int unreadCount =
-                          snapshot.hasData ? snapshot.data!.docs.length : 0;
+          actions:
+              _selectedIndex == 0
+                  ? [
+                    StreamBuilder<QuerySnapshot>(
+                      stream:
+                          firestore
+                              .collection("UserNotification")
+                              .where("isRead", isEqualTo: false)
+                              .snapshots(),
+                      builder: (context, snapshot) {
+                        int unreadCount =
+                            snapshot.hasData ? snapshot.data!.docs.length : 0;
 
-                      return Stack(
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.notifications,
-                              color: Colors.black,
-                              size: w * 0.07,
+                        return Stack(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.notifications,
+                                color: Colors.black,
+                                size: w * 0.07,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const NotificationScreen(),
+                                  ),
+                                );
+                              },
                             ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const NotificationScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: 8,
-                              top: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  unreadCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.list, color: Colors.black, size: w * 0.07),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CategoriesPage(),
-                        ),
-                      );
-                    },
-                  ),
-                ]
-                : null,
-      ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          buildHomeBody(w, h),
-          const CartPage(),
-          const WishlistPage(),
-          const ProfilePage(),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.deepOrange,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: w * 0.06),
-            label: "Home",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart, size: w * 0.06),
-            label: "Cart",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border, size: w * 0.06),
-            label: "Wishlist",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person, size: w * 0.06),
-            label: "Profile",
-          ),
-        ],
-      ),
+                          ],
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.list,
+                        color: Colors.black,
+                        size: w * 0.07,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CategoriesPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ]
+                  : null,
+        ),
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            buildHomeBody(w, h),
+            const CartPage(),
+            const WishlistPage(),
+            const ProfilePage(),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          selectedItemColor: Colors.deepOrange,
+          unselectedItemColor: Colors.grey,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home, size: w * 0.06),
+              label: "Home",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart, size: w * 0.06),
+              label: "Cart",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite_border, size: w * 0.06),
+              label: "Wishlist",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person, size: w * 0.06),
+              label: "Profile",
+            ),
+          ],
+        ),
       ),
     );
-    
   }
 
   Widget buildHomeBody(double w, double h) {
@@ -328,12 +331,21 @@ class _HomePageState extends State<HomePage> {
                                         color: Colors.white,
                                       ),
                                       onPressed: () async {
-                                        await FirestoreService.addToCart(
-                                          product,
-                                        );
-                                        setState(() {
-                                          cartItems.add(product.id);
-                                        });
+                                        if (isInCart) {
+                                          await FirestoreService.removeFromCart(
+                                            product.id,
+                                          );
+                                          setState(() {
+                                            cartItems.remove(product.id);
+                                          });
+                                        } else {
+                                          await FirestoreService.addToCart(
+                                            product,
+                                          );
+                                          setState(() {
+                                            cartItems.add(product.id);
+                                          });
+                                        }
                                       },
                                     ),
                                   ),
@@ -362,12 +374,21 @@ class _HomePageState extends State<HomePage> {
                                         color: Colors.white,
                                       ),
                                       onPressed: () async {
-                                        await FirestoreService.addToWishlist(
-                                          product,
-                                        );
-                                        setState(() {
-                                          wishlistItems.add(product.id);
-                                        });
+                                        if (isInWishlist) {
+                                          await FirestoreService.removeFromWishlist(
+                                            product.id,
+                                          );
+                                          setState(() {
+                                            wishlistItems.remove(product.id);
+                                          });
+                                        } else {
+                                          await FirestoreService.addToWishlist(
+                                            product,
+                                          );
+                                          setState(() {
+                                            wishlistItems.add(product.id);
+                                          });
+                                        }
                                       },
                                     ),
                                   ),
