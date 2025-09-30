@@ -4,6 +4,7 @@ import 'package:shoe_store_app/main.dart';
 import 'product_detailes_page.dart';
 import 'profile_page.dart';
 import 'categories_page.dart';
+import 'brands_page.dart';
 import 'wishlist_page.dart';
 import 'cart_page.dart';
 import 'user_notification_page.dart';
@@ -26,6 +27,32 @@ class _HomePageState extends State<HomePage> {
   ];
 
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final TextEditingController searchController = TextEditingController();
+
+  // Map of color names for search
+  final Map<String, Color> colorNames = {
+    "red": Colors.red,
+    "blue": Colors.blue,
+    "green": Colors.green,
+    "yellow": Colors.yellow,
+    "orange": Colors.orange,
+    "pink": Colors.pink,
+    "purple": Colors.purple,
+    "brown": Colors.brown,
+    "black": Colors.black,
+    "white": Colors.white,
+    "grey": Colors.grey,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Listen to search changes
+    searchController.addListener(() {
+      setState(() {}); // rebuild to apply filter
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,73 +72,69 @@ class _HomePageState extends State<HomePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions:
-            _selectedIndex == 0
-                ? [
-                  StreamBuilder<QuerySnapshot>(
-                    stream:
-                        firestore
-                            .collection("UserNotification")
-                            .where("isRead", isEqualTo: false)
-                            .snapshots(),
-                    builder: (context, snapshot) {
-                      int unreadCount =
-                          snapshot.hasData ? snapshot.data!.docs.length : 0;
+        actions: _selectedIndex == 0
+            ? [
+                StreamBuilder<QuerySnapshot>(
+                  stream: firestore
+                      .collection("UserNotification")
+                      .where("isRead", isEqualTo: false)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int unreadCount =
+                        snapshot.hasData ? snapshot.data!.docs.length : 0;
 
-                      return Stack(
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.notifications,
-                              color: Colors.black,
-                              size: w * 0.07,
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const NotificationScreen(),
-                                ),
-                              );
-                            },
+                    return Stack(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.notifications,
+                            color: Colors.black,
+                            size: w * 0.07,
                           ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: 8,
-                              top: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  unreadCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                        ],
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.list, color: Colors.black, size: w * 0.07),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CategoriesPage(),
-                        ),
-                      );
-                    },
-                  ),
-                ]
-                : null,
+                          ),
+                      ],
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.menu, color: Colors.black, size: w * 0.07),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CategoriesPage()),
+                    );
+                  },
+                ),
+              ]
+            : null,
       ),
       body: IndexedStack(
         index: _selectedIndex,
@@ -154,27 +177,26 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner example
-          SizedBox(
-            height: h * 0.2,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.all(w * 0.03),
-              itemCount: 3,
-              separatorBuilder: (_, __) => SizedBox(width: w * 0.03),
-              itemBuilder: (_, index) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(w * 0.03),
-                  child: Image.network(
-                    "https://picsum.photos/500/200?${index + 1}",
-                    width: w * 0.6,
-                    fit: BoxFit.cover,
-                  ),
-                );
-              },
+          // 🔍 Search Bar
+          Padding(
+            padding: EdgeInsets.all(w * 0.04),
+            child: TextField(
+              controller: searchController,
+              decoration: const InputDecoration(
+                hintText: "Search by name, brand, category, size, color ...",
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.pink),
+                ),
+                prefixIcon: Icon(Icons.search, color: Colors.pink),
+              ),
             ),
           ),
+
+          // 🟧 BrandsPage (horizontal circle)
+          const BrandsBar(),
+
           SizedBox(height: h * 0.02),
+
           Padding(
             padding: EdgeInsets.symmetric(horizontal: w * 0.04),
             child: Text(
@@ -182,6 +204,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: w * 0.05, fontWeight: FontWeight.bold),
             ),
           ),
+
           // Firestore Products
           StreamBuilder<QuerySnapshot>(
             stream: firestore.collection('Nproducts').snapshots(),
@@ -194,9 +217,38 @@ class _HomePageState extends State<HomePage> {
               }
 
               final products =
-                  snapshot.data!.docs
-                      .map((doc) => Product.fromFirestore(doc))
-                      .toList();
+                  snapshot.data!.docs.map((doc) => Product.fromFirestore(doc)).toList();
+
+              final searchText = searchController.text.toLowerCase();
+
+              // 🔎 Filter products
+              final filtered = searchText.isEmpty
+                  ? products
+                  : products.where((p) {
+                      final matchesName = p.name.toLowerCase().contains(searchText);
+                      final matchesCategory = p.category.toLowerCase().contains(searchText);
+                      final matchesBrand =
+                          p.brand != null && p.brand!.toLowerCase().contains(searchText);
+                      final matchesSizes =
+                          p.sizes != null && p.sizes!.any((s) => s.toString().contains(searchText));
+                      final matchesColors = p.colors != null &&
+                          p.colors!.any((c) {
+                            final hex =
+                                '#${c.value.toRadixString(16).substring(2).toLowerCase()}';
+                            final nameMatch = colorNames.entries.any(
+                              (entry) =>
+                                  entry.key.contains(searchText) &&
+                                  entry.value.value == c.value,
+                            );
+                            return hex.contains(searchText) || nameMatch;
+                          });
+
+                      return matchesName ||
+                          matchesCategory ||
+                          matchesBrand ||
+                          matchesSizes ||
+                          matchesColors;
+                    }).toList();
 
               return GridView.builder(
                 shrinkWrap: true,
@@ -208,9 +260,9 @@ class _HomePageState extends State<HomePage> {
                   crossAxisSpacing: w * 0.03,
                   childAspectRatio: 0.7,
                 ),
-                itemCount: products.length,
+                itemCount: filtered.length,
                 itemBuilder: (context, index) {
-                  final product = products[index];
+                  final product = filtered[index];
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -225,20 +277,19 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(w * 0.03),
-                          child:
-                              product.image.startsWith('http')
-                                  ? Image.network(
-                                    product.image,
-                                    height: h * 0.15,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  )
-                                  : Image.asset(
-                                    product.image,
-                                    height: h * 0.15,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
+                          child: product.image.startsWith('http')
+                              ? Image.network(
+                                  product.image,
+                                  height: h * 0.15,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.asset(
+                                  product.image,
+                                  height: h * 0.15,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
                         ),
                         SizedBox(height: h * 0.01),
                         Text(
