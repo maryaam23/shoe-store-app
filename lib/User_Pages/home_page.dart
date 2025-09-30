@@ -18,13 +18,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-
   final List<String> pageTitles = [
     "Sport Brands",
     "Cart Page",
     "Wishlist Page",
     "My Profile",
   ];
+
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -47,18 +48,54 @@ class _HomePageState extends State<HomePage> {
         actions:
             _selectedIndex == 0
                 ? [
-                  IconButton(
-                    icon: Icon(
-                      Icons.notifications,
-                      color: Colors.black,
-                      size: w * 0.07,
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationScreen(),
-                        ),
+                  StreamBuilder<QuerySnapshot>(
+                    stream:
+                        firestore
+                            .collection("UserNotification")
+                            .where("isRead", isEqualTo: false)
+                            .snapshots(),
+                    builder: (context, snapshot) {
+                      int unreadCount =
+                          snapshot.hasData ? snapshot.data!.docs.length : 0;
+
+                      return Stack(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.notifications,
+                              color: Colors.black,
+                              size: w * 0.07,
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  unreadCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -137,7 +174,6 @@ class _HomePageState extends State<HomePage> {
               },
             ),
           ),
-
           SizedBox(height: h * 0.02),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: w * 0.04),
@@ -146,27 +182,14 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: w * 0.05, fontWeight: FontWeight.bold),
             ),
           ),
-
           // Firestore Products
           StreamBuilder<QuerySnapshot>(
             stream: firestore.collection('Nproducts').snapshots(),
             builder: (context, snapshot) {
-              // ✅ Correct debug print without databaseId
-              print('Firestore app name: ${firestore.app.name}');
-              print('Connection state: ${snapshot.connectionState}');
-
               if (snapshot.connectionState == ConnectionState.waiting) {
-                print('Waiting for Firestore data...');
                 return const Center(child: CircularProgressIndicator());
               }
-
-              if (snapshot.hasError) {
-                print('Firestore error: ${snapshot.error}');
-                return Center(child: Text("Error fetching products."));
-              }
-
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                print('No products found.');
                 return const Center(child: Text("No products found."));
               }
 
@@ -174,7 +197,6 @@ class _HomePageState extends State<HomePage> {
                   snapshot.data!.docs
                       .map((doc) => Product.fromFirestore(doc))
                       .toList();
-              print('Loaded ${products.length} products from Firestore');
 
               return GridView.builder(
                 shrinkWrap: true,
