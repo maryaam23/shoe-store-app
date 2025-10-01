@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shoe_store_app/main.dart';
 import 'product_detailes_page.dart';
 import 'profile_page.dart';
 import 'categories_page.dart';
@@ -8,7 +7,9 @@ import 'brands_page.dart';
 import 'wishlist_page.dart';
 import 'cart_page.dart';
 import 'user_notification_page.dart';
-import 'product_page.dart'; // your Product model
+import 'product_page.dart'; // Product model
+import '../firestore_service.dart'; // FirestoreService class
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,6 +26,9 @@ class _HomePageState extends State<HomePage> {
     "Wishlist Page",
     "My Profile",
   ];
+
+  late Stream<QuerySnapshot> cartStream;
+  late Stream<QuerySnapshot> wishlistStream;
 
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final TextEditingController searchController = TextEditingController();
@@ -47,6 +51,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    cartStream = FirestoreService.getCart();
+    wishlistStream = FirestoreService.getWishlist();
 
     // Listen to search changes
     searchController.addListener(() {
@@ -59,115 +65,126 @@ class _HomePageState extends State<HomePage> {
     double w = MediaQuery.of(context).size.width;
     double h = MediaQuery.of(context).size.height;
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.grey[50],
-        centerTitle: true,
-        title: Text(
-          pageTitles[_selectedIndex],
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: w * 0.05,
-            fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.grey[50],
+          centerTitle: true,
+          title: Text(
+            pageTitles[_selectedIndex],
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: w * 0.05,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        actions: _selectedIndex == 0
-            ? [
-                StreamBuilder<QuerySnapshot>(
-                  stream: firestore
-                      .collection("UserNotification")
-                      .where("isRead", isEqualTo: false)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    int unreadCount =
-                        snapshot.hasData ? snapshot.data!.docs.length : 0;
+          actions:
+              _selectedIndex == 0
+                  ? [
+                    StreamBuilder<QuerySnapshot>(
+                      stream:
+                          firestore
+                              .collection("UserNotification")
+                              .where("isRead", isEqualTo: false)
+                              .snapshots(),
+                      builder: (context, snapshot) {
+                        int unreadCount =
+                            snapshot.hasData ? snapshot.data!.docs.length : 0;
 
-                    return Stack(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.notifications,
-                            color: Colors.black,
-                            size: w * 0.07,
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const NotificationScreen(),
+                        return Stack(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.notifications,
+                                color: Colors.black,
+                                size: w * 0.07,
                               ),
-                            );
-                          },
-                        ),
-                        if (unreadCount > 0)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                unreadCount.toString(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const NotificationScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.menu,
+                        color: Colors.black,
+                        size: w * 0.07,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CategoriesPage(),
                           ),
-                      ],
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.menu, color: Colors.black, size: w * 0.07),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CategoriesPage()),
-                    );
-                  },
-                ),
-              ]
-            : null,
-      ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          buildHomeBody(w, h),
-          const CartPage(),
-          const WishlistPage(),
-          const ProfilePage(),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.deepOrange,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: w * 0.06),
-            label: "Home",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart, size: w * 0.06),
-            label: "Cart",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border, size: w * 0.06),
-            label: "Wishlist",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person, size: w * 0.06),
-            label: "Profile",
-          ),
-        ],
+                        );
+                      },
+                    ),
+                  ]
+                  : null,
+        ),
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            buildHomeBody(w, h),
+            const CartPage(),
+            const WishlistPage(),
+            const ProfilePage(),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          selectedItemColor: Colors.deepOrange,
+          unselectedItemColor: Colors.grey,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home, size: w * 0.06),
+              label: "Home",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart, size: w * 0.06),
+              label: "Cart",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite_border, size: w * 0.06),
+              label: "Wishlist",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person, size: w * 0.06),
+              label: "Profile",
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -179,15 +196,30 @@ class _HomePageState extends State<HomePage> {
         children: [
           // 🔍 Search Bar
           Padding(
-            padding: EdgeInsets.all(w * 0.04),
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                hintText: "Search by name, brand, category, size, color ...",
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.pink),
+            padding: EdgeInsets.all(w * 0.03),
+            child: SizedBox(
+              height: h * 0.08, // 👈 control height
+              child: TextField(
+                controller: searchController,
+                style: TextStyle(
+                  // 👈 text font size
+                  fontSize: 16, // change as you like
                 ),
-                prefixIcon: Icon(Icons.search, color: Colors.pink),
+                decoration: InputDecoration(
+                  hintText: "Search by name, brand, category, size, color ...",
+                  hintStyle: const TextStyle(
+                    fontSize: 11,
+                  ), // 👈 hint text font size
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 0,
+                    horizontal: 7,
+                  ), // 👈 padding inside box
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12), // 👈 rounded edges
+                    borderSide: const BorderSide(color: Colors.pink),
+                  ),
+                  prefixIcon: const Icon(Icons.search, color: Colors.pink),
+                ),
               ),
             ),
           ),
@@ -217,98 +249,254 @@ class _HomePageState extends State<HomePage> {
               }
 
               final products =
-                  snapshot.data!.docs.map((doc) => Product.fromFirestore(doc)).toList();
+                  snapshot.data!.docs
+                      .map((doc) => Product.fromFirestore(doc))
+                      .toList();
 
-              final searchText = searchController.text.toLowerCase();
+              // Remove leading/trailing spaces and collapse multiple spaces, then lowercase
+              final searchText =
+                  searchController.text
+                      .trim()
+                      .replaceAll(RegExp(r'\s+'), ' ')
+                      .toLowerCase();
 
               // 🔎 Filter products
-              final filtered = searchText.isEmpty
-                  ? products
-                  : products.where((p) {
-                      final matchesName = p.name.toLowerCase().contains(searchText);
-                      final matchesCategory = p.category.toLowerCase().contains(searchText);
-                      final matchesBrand =
-                          p.brand != null && p.brand!.toLowerCase().contains(searchText);
-                      final matchesSizes =
-                          p.sizes != null && p.sizes!.any((s) => s.toString().contains(searchText));
-                      final matchesColors = p.colors != null &&
-                          p.colors!.any((c) {
-                            final hex =
-                                '#${c.value.toRadixString(16).substring(2).toLowerCase()}';
-                            final nameMatch = colorNames.entries.any(
-                              (entry) =>
-                                  entry.key.contains(searchText) &&
-                                  entry.value.value == c.value,
+              final filtered =
+                  searchText.isEmpty
+                      ? products
+                      : products.where((p) {
+                        final matchesName = p.name.toLowerCase().contains(
+                          searchText,
+                        );
+                        final matchesCategory = p.category
+                            .toLowerCase()
+                            .contains(searchText);
+                        final matchesBrand =
+                            p.brand != null &&
+                            p.brand!.toLowerCase().contains(searchText);
+                        final matchesSizes =
+                            p.sizes != null &&
+                            p.sizes!.any(
+                              (s) => s.toString().contains(searchText),
                             );
-                            return hex.contains(searchText) || nameMatch;
-                          });
+                        final matchesColors =
+                            p.colors != null &&
+                            p.colors!.any((c) {
+                              final hex =
+                                  '#${c.value.toRadixString(16).substring(2).toLowerCase()}';
+                              final nameMatch = colorNames.entries.any(
+                                (entry) =>
+                                    entry.key.contains(searchText) &&
+                                    entry.value.value == c.value,
+                              );
+                              return hex.contains(searchText) || nameMatch;
+                            });
 
-                      return matchesName ||
-                          matchesCategory ||
-                          matchesBrand ||
-                          matchesSizes ||
-                          matchesColors;
-                    }).toList();
+                        return matchesName ||
+                            matchesCategory ||
+                            matchesBrand ||
+                            matchesSizes ||
+                            matchesColors;
+                      }).toList();
 
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: w * 0.04),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: h * 0.015,
-                  crossAxisSpacing: w * 0.03,
-                  childAspectRatio: 0.7,
-                ),
-                itemCount: filtered.length,
-                itemBuilder: (context, index) {
-                  final product = filtered[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ProductDetailPage(product: product),
+              return StreamBuilder<QuerySnapshot>(
+                stream: wishlistStream,
+                builder: (context, wishlistSnap) {
+                  final wishlistIds =
+                      wishlistSnap.hasData
+                          ? wishlistSnap.data!.docs.map((d) => d.id).toSet()
+                          : <String>{};
+
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: cartStream,
+                    builder: (context, cartSnap) {
+                      final cartIds =
+                          cartSnap.hasData
+                              ? cartSnap.data!.docs.map((d) => d.id).toSet()
+                              : <String>{};
+
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.symmetric(horizontal: w * 0.04),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: h * 0.015,
+                          crossAxisSpacing: w * 0.03,
+                          childAspectRatio: 0.7,
                         ),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final product = filtered[index];
+                          final isInCart = cartIds.contains(product.id);
+                          final isInWishlist = wishlistIds.contains(product.id);
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) =>
+                                          ProductDetailPage(product: product),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(w * 0.01),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(
+                                      w * 0.01,
+                                    ),
+                                    child:
+                                        product.image.startsWith('http')
+                                            ? Image.network(
+                                              product.image,
+                                              height: h * 0.2,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                            )
+                                            : Image.asset(
+                                              product.image,
+                                              height: h * 0.2,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                            ),
+                                  ),
+                                  SizedBox(height: h * 0.01),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.02,
+                                    ),
+                                    child: Text(
+                                      product.name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: w * 0.05,
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.02,
+                                    ),
+                                    child: Text(
+                                      "₪${product.price.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: w * 0.04,
+                                        color: Colors.deepOrange,
+                                      ),
+                                    ),
+                                  ),
+                                  // 🛒 Cart + ❤️ Wishlist buttons
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.02,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Cart button
+                                        Container(
+                                          width: w * 0.12,
+                                          height: h * 0.05,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                isInCart
+                                                    ? Colors.green
+                                                    : Colors.deepOrange,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            iconSize: w * 0.06,
+                                            icon: const Icon(
+                                              Icons.add_shopping_cart_outlined,
+                                              color: Colors.white,
+                                            ),
+                                            onPressed: () async {
+                                              if (isInCart) {
+                                                await FirestoreService.removeFromCart(
+                                                  product.id,
+                                                );
+                                              } else {
+                                                int defaultSize =
+                                                    (product.sizes != null &&
+                                                            product
+                                                                .sizes!
+                                                                .isNotEmpty)
+                                                        ? product.sizes!.first
+                                                        : 0;
+                                                Color defaultColor =
+                                                    (product.colors != null &&
+                                                            product
+                                                                .colors!
+                                                                .isNotEmpty)
+                                                        ? product.colors!.first
+                                                        : Colors.black;
+
+                                                await FirestoreService.addToCart(
+                                                  product,
+                                                  size: defaultSize,
+                                                  color: defaultColor,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(width: w * 0.04),
+                                        // Wishlist button
+                                        Container(
+                                          width: w * 0.12,
+                                          height: h * 0.05,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                isInWishlist
+                                                    ? Colors.pink
+                                                    : Colors.deepOrange,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            iconSize: w * 0.055,
+                                            icon: const Icon(
+                                              Icons.favorite,
+                                              color: Colors.white,
+                                            ),
+                                            onPressed: () async {
+                                              if (isInWishlist) {
+                                                await FirestoreService.removeFromWishlist(
+                                                  product.id,
+                                                );
+                                              } else {
+                                                await FirestoreService.addToWishlist(
+                                                  product,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(w * 0.03),
-                          child: product.image.startsWith('http')
-                              ? Image.network(
-                                  product.image,
-                                  height: h * 0.15,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.asset(
-                                  product.image,
-                                  height: h * 0.15,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                        ),
-                        SizedBox(height: h * 0.01),
-                        Text(
-                          product.name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: w * 0.04,
-                          ),
-                        ),
-                        Text(
-                          "\$${product.price.toStringAsFixed(2)}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: w * 0.04,
-                            color: Colors.deepOrange,
-                          ),
-                        ),
-                      ],
-                    ),
                   );
                 },
               );

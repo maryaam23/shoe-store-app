@@ -23,13 +23,16 @@ class BrandsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final h = MediaQuery.of(context).size.height;
+
     return SizedBox(
-      height: 130, // adjust as needed
+      height: h * 0.18, // dynamic height (~18% of screen height)
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: w * 0.04, vertical: h * 0.01),
         itemCount: brands.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 16),
+        separatorBuilder: (_, __) => SizedBox(width: w * 0.04),
         itemBuilder: (context, index) {
           final brand = brands[index];
           return GestureDetector(
@@ -37,10 +40,11 @@ class BrandsBar extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ProductPage(
-                    selectedFilterName: brand["name"]!,
-                    filterType: "brand",
-                  ),
+                  builder:
+                      (_) => ProductPage(
+                        selectedFilterName: brand["name"]!,
+                        filterType: "brand",
+                      ),
                 ),
               );
             },
@@ -48,25 +52,22 @@ class BrandsBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(w * 0.02),
                   decoration: BoxDecoration(
                     color: Colors.deepOrange.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: SizedBox(
-                    width: 50,
-                    height: 50,
-                    child: Image.asset(
-                      brand["image"]!,
-                      fit: BoxFit.contain,
-                    ),
+                    width: w * 0.13, // responsive circle size
+                    height: w * 0.13,
+                    child: Image.asset(brand["image"]!, fit: BoxFit.contain),
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: h * 0.008),
                 Text(
                   brand["name"]!,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: w * 0.03, // responsive text size
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
