@@ -3,13 +3,11 @@ import 'product_page.dart';
 
 class CategoriesPage extends StatelessWidget {
   const CategoriesPage({super.key});
-
-  final List<Map<String, dynamic>> categories = const [
-    {"name": "Shoes", "icon": Icons.sports_basketball},
-    {"name": "Clothes", "icon": Icons.checkroom},
-    {"name": "Accessories", "icon": Icons.watch},
+  final List<Map<String, String>> categories = const [
+    {"name": "Shoes",  "image": "assets/shoes.png"},
+    {"name": "Clothes",  "image": "assets/shirt.png"},
+    {"name": "Accessories",  "image": "assets/hat.png"},
   ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,21 +46,32 @@ class CategoriesPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.grey.shade300,
-                      blurRadius: 6,
-                      offset: const Offset(0, 4)),
+                    color: Colors.grey.shade300,
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(category["icon"] as IconData, size: 50, color: Colors.deepOrange),
+                  SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: Image.asset(
+                      category["image"]!,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text(category["name"] as String,
-                      style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black)),
+                  Text(
+                    category["name"] as String,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
                 ],
               ),
             ),

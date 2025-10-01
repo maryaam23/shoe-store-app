@@ -27,6 +27,7 @@ class _HomePageState extends State<HomePage> {
     "My Profile",
   ];
 
+
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
   final TextEditingController searchController = TextEditingController();
@@ -48,6 +49,9 @@ class _HomePageState extends State<HomePage> {
     "white": Colors.white,
     "grey": Colors.grey,
   };
+
+
+ 
 
   @override
   void initState() {
@@ -93,6 +97,7 @@ class _HomePageState extends State<HomePage> {
                       builder: (context, snapshot) {
                         int unreadCount =
                             snapshot.hasData ? snapshot.data!.docs.length : 0;
+
                         return Stack(
                           children: [
                             IconButton(
@@ -136,7 +141,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     IconButton(
                       icon: Icon(
-                        Icons.list,
+                        Icons.menu,
                         color: Colors.black,
                         size: w * 0.07,
                       ),
@@ -228,6 +233,7 @@ class _HomePageState extends State<HomePage> {
           const BrandsBar(),
 
           SizedBox(height: h * 0.02),
+
           Padding(
             padding: EdgeInsets.symmetric(horizontal: w * 0.04),
             child: Text(
@@ -235,7 +241,8 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: w * 0.05, fontWeight: FontWeight.bold),
             ),
           ),
-          // Firestore Products + Streams for cart/wishlist
+
+          // Firestore Products
           StreamBuilder<QuerySnapshot>(
             stream: firestore.collection('Nproducts').snapshots(),
             builder: (context, snapshot) {
@@ -251,7 +258,15 @@ class _HomePageState extends State<HomePage> {
                       .map((doc) => Product.fromFirestore(doc))
                       .toList();
 
-              final searchText = searchController.text.toLowerCase();
+
+              // Remove leading/trailing spaces and collapse multiple spaces, then lowercase
+              final searchText =
+                  searchController.text
+                      .trim()
+                      .replaceAll(RegExp(r'\s+'), ' ')
+                      .toLowerCase();
+
+
               // 🔎 Filter products
               final filtered =
                   searchText.isEmpty
@@ -310,20 +325,20 @@ class _HomePageState extends State<HomePage> {
                       return GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: w * 0.04,
-                          vertical: h * 0.02,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: w * 0.04),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           mainAxisSpacing: h * 0.015,
                           crossAxisSpacing: w * 0.03,
                           childAspectRatio: 0.7,
                         ),
+
                         //itemCount: products.length,
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           //final product = products[index];
+
+                      
                           final product = filtered[index];
                           final isInCart = cartIds.contains(product.id);
                           final isInWishlist = wishlistIds.contains(product.id);
@@ -392,6 +407,7 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                     ),
                                   ),
+                                  // 🛒 Cart + ❤️ Wishlist buttons
                                   Padding(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: w * 0.02,
@@ -399,7 +415,7 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     child: Row(
                                       children: [
-                                        // Add to Cart
+                                        // Cart button
                                         Container(
                                           width: w * 0.12,
                                           height: h * 0.05,
@@ -425,7 +441,6 @@ class _HomePageState extends State<HomePage> {
                                                   product.id,
                                                 );
                                               } else {
-                                                // ❗ Default size & color
                                                 int defaultSize =
                                                     (product.sizes != null &&
                                                             product
@@ -451,7 +466,7 @@ class _HomePageState extends State<HomePage> {
                                           ),
                                         ),
                                         SizedBox(width: w * 0.04),
-                                        // Wishlist
+                                        // Wishlist button
                                         Container(
                                           width: w * 0.12,
                                           height: h * 0.05,

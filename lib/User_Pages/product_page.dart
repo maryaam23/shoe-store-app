@@ -127,23 +127,21 @@ class ProductPage extends StatelessWidget {
           }
 
           // Convert Firestore docs into Product objects
-          List<Product> products =
-              snapshot.data!.docs
-                  .map((doc) => Product.fromFirestore(doc))
-                  .toList();
+          List<Product> products = snapshot.data!.docs
+              .map((doc) => Product.fromFirestore(doc))
+              .toList();
 
           // Apply filter depending on filterType
-          products =
-              products.where((p) {
-                if (filterType == "category") {
-                  return p.category.toLowerCase() ==
-                      selectedFilterName.toLowerCase();
-                } else if (filterType == "brand") {
-                  return p.brand?.toLowerCase() ==
-                      selectedFilterName.toLowerCase();
-                }
-                return false;
-              }).toList();
+          products = products.where((p) {
+            if (filterType == "category") {
+              return p.category.toLowerCase() ==
+                  selectedFilterName.toLowerCase();
+            } else if (filterType == "brand") {
+              return p.brand?.toLowerCase() ==
+                  selectedFilterName.toLowerCase();
+            }
+            return false;
+          }).toList();
 
           if (products.isEmpty) {
             return Center(
@@ -176,20 +174,19 @@ class ProductPage extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child:
-                          product.image.startsWith('http')
-                              ? Image.network(
-                                product.image,
-                                height: 120,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              )
-                              : Image.asset(
-                                product.image,
-                                height: 120,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
+                      child: product.image.startsWith('http')
+                          ? Image.network(
+                              product.image,
+                              height: 120,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.asset(
+                              product.image,
+                              height: 120,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -210,3 +207,4 @@ class ProductPage extends StatelessWidget {
     );
   }
 }
+
