@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoe_store_app/User_Pages/brands_page.dart';
 import 'product_detailes_page.dart';
 import 'profile_page.dart';
 import 'categories_page.dart';
@@ -28,15 +29,36 @@ class _HomePageState extends State<HomePage> {
 
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
+  final TextEditingController searchController = TextEditingController();
 
   late Stream<QuerySnapshot> cartStream;
   late Stream<QuerySnapshot> wishlistStream;
+
+  // Map of color names for search
+  final Map<String, Color> colorNames = {
+    "red": Colors.red,
+    "blue": Colors.blue,
+    "green": Colors.green,
+    "yellow": Colors.yellow,
+    "orange": Colors.orange,
+    "pink": Colors.pink,
+    "purple": Colors.purple,
+    "brown": Colors.brown,
+    "black": Colors.black,
+    "white": Colors.white,
+    "grey": Colors.grey,
+  };
 
   @override
   void initState() {
     super.initState();
     cartStream = FirestoreService.getCart();
     wishlistStream = FirestoreService.getWishlist();
+
+    // Listen to search changes
+    searchController.addListener(() {
+      setState(() {}); // rebuild to apply filter
+    });
   }
 
   @override
@@ -172,7 +194,39 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
+          // 🔍 Search Bar
+          Padding(
+            padding: EdgeInsets.all(w * 0.03),
+            child: SizedBox(
+              height: h * 0.08, // 👈 control height
+              child: TextField(
+                controller: searchController,
+                style: TextStyle(
+                  // 👈 text font size
+                  fontSize: 16, // change as you like
+                ),
+                decoration: InputDecoration(
+                  hintText: "Search by name, brand, category, size, color ...",
+                  hintStyle: const TextStyle(
+                    fontSize: 11,
+                  ), // 👈 hint text font size
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 0,
+                    horizontal: 7,
+                  ), // 👈 padding inside box
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12), // 👈 rounded edges
+                    borderSide: const BorderSide(color: Colors.pink),
+                  ),
+                  prefixIcon: const Icon(Icons.search, color: Colors.pink),
+                ),
+              ),
+            ),
+          ),
+
+          // 🟧 BrandsPage (horizontal circle)
+          const BrandsBar(),
+
           SizedBox(height: h * 0.02),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: w * 0.04),
@@ -196,6 +250,46 @@ class _HomePageState extends State<HomePage> {
                   snapshot.data!.docs
                       .map((doc) => Product.fromFirestore(doc))
                       .toList();
+
+              final searchText = searchController.text.toLowerCase();
+              // 🔎 Filter products
+              final filtered =
+                  searchText.isEmpty
+                      ? products
+                      : products.where((p) {
+                        final matchesName = p.name.toLowerCase().contains(
+                          searchText,
+                        );
+                        final matchesCategory = p.category
+                            .toLowerCase()
+                            .contains(searchText);
+                        final matchesBrand =
+                            p.brand != null &&
+                            p.brand!.toLowerCase().contains(searchText);
+                        final matchesSizes =
+                            p.sizes != null &&
+                            p.sizes!.any(
+                              (s) => s.toString().contains(searchText),
+                            );
+                        final matchesColors =
+                            p.colors != null &&
+                            p.colors!.any((c) {
+                              final hex =
+                                  '#${c.value.toRadixString(16).substring(2).toLowerCase()}';
+                              final nameMatch = colorNames.entries.any(
+                                (entry) =>
+                                    entry.key.contains(searchText) &&
+                                    entry.value.value == c.value,
+                              );
+                              return hex.contains(searchText) || nameMatch;
+                            });
+
+                        return matchesName ||
+                            matchesCategory ||
+                            matchesBrand ||
+                            matchesSizes ||
+                            matchesColors;
+                      }).toList();
 
               return StreamBuilder<QuerySnapshot>(
                 stream: wishlistStream,
@@ -226,9 +320,11 @@ class _HomePageState extends State<HomePage> {
                           crossAxisSpacing: w * 0.03,
                           childAspectRatio: 0.7,
                         ),
-                        itemCount: products.length,
+                        //itemCount: products.length,
+                        itemCount: filtered.length,
                         itemBuilder: (context, index) {
-                          final product = products[index];
+                          //final product = products[index];
+                          final product = filtered[index];
                           final isInCart = cartIds.contains(product.id);
                           final isInWishlist = wishlistIds.contains(product.id);
 

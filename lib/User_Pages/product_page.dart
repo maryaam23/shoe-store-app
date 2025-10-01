@@ -103,50 +103,53 @@ class Product {
 // Product Page (Grid View)
 // ========================
 class ProductPage extends StatelessWidget {
-  final String selectedCategoryName;
+  final String selectedFilterName;
+  final String filterType; // "category" or "brand"
 
-  const ProductPage({super.key, required this.selectedCategoryName});
+  const ProductPage({
+    super.key,
+    required this.selectedFilterName,
+    required this.filterType,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(selectedCategoryName),
+        title: Text("$filterType: $selectedFilterName"),
         backgroundColor: Colors.deepOrange,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // Correct
         stream: firestore.collection('Nproducts').snapshots(),
-
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
+          // Convert Firestore docs into Product objects
           List<Product> products =
               snapshot.data!.docs
                   .map((doc) => Product.fromFirestore(doc))
-                  .where(
-                    (p) =>
-                        p.category.toLowerCase() ==
-                        selectedCategoryName.toLowerCase(),
-                  )
                   .toList();
 
-          products.forEach(
-            (p) => print('Product: ${p.name}, category: "${p.category}"'),
-          );
-          // Now apply your category filter
+          // Apply filter depending on filterType
           products =
-              products
-                  .where(
-                    (p) =>
-                        p.category.toLowerCase() ==
-                        selectedCategoryName.toLowerCase(),
-                  )
-                  .toList();
+              products.where((p) {
+                if (filterType == "category") {
+                  return p.category.toLowerCase() ==
+                      selectedFilterName.toLowerCase();
+                } else if (filterType == "brand") {
+                  return p.brand?.toLowerCase() ==
+                      selectedFilterName.toLowerCase();
+                }
+                return false;
+              }).toList();
 
-          if (products.isEmpty)
-            return const Center(child: Text("No products in this category."));
+          if (products.isEmpty) {
+            return Center(
+              child: Text("No products found in this $filterType."),
+            );
+          }
 
           return GridView.builder(
             padding: const EdgeInsets.all(16),
