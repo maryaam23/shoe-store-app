@@ -10,6 +10,7 @@ import 'user_notification_page.dart';
 import 'product_page.dart'; // Product model
 import '../firestore_service.dart'; // FirestoreService class
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:another_flushbar/flushbar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,7 +27,6 @@ class _HomePageState extends State<HomePage> {
     "Wishlist Page",
     "My Profile",
   ];
-
 
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
@@ -49,9 +49,6 @@ class _HomePageState extends State<HomePage> {
     "white": Colors.white,
     "grey": Colors.grey,
   };
-
-
- 
 
   @override
   void initState() {
@@ -258,14 +255,12 @@ class _HomePageState extends State<HomePage> {
                       .map((doc) => Product.fromFirestore(doc))
                       .toList();
 
-
               // Remove leading/trailing spaces and collapse multiple spaces, then lowercase
               final searchText =
                   searchController.text
                       .trim()
                       .replaceAll(RegExp(r'\s+'), ' ')
                       .toLowerCase();
-
 
               // 🔎 Filter products
               final filtered =
@@ -338,7 +333,6 @@ class _HomePageState extends State<HomePage> {
                         itemBuilder: (context, index) {
                           //final product = products[index];
 
-                      
                           final product = filtered[index];
                           final isInCart = cartIds.contains(product.id);
                           final isInWishlist = wishlistIds.contains(product.id);
@@ -435,33 +429,332 @@ class _HomePageState extends State<HomePage> {
                                               Icons.add_shopping_cart_outlined,
                                               color: Colors.white,
                                             ),
+                                            //Mariam edit
                                             onPressed: () async {
-                                              if (isInCart) {
-                                                await FirestoreService.removeFromCart(
-                                                  product.id,
-                                                );
-                                              } else {
-                                                int defaultSize =
-                                                    (product.sizes != null &&
-                                                            product
-                                                                .sizes!
-                                                                .isNotEmpty)
-                                                        ? product.sizes!.first
-                                                        : 0;
-                                                Color defaultColor =
-                                                    (product.colors != null &&
-                                                            product
-                                                                .colors!
-                                                                .isNotEmpty)
-                                                        ? product.colors!.first
-                                                        : Colors.black;
+                                              final outerContext = context;
 
-                                                await FirestoreService.addToCart(
-                                                  product,
-                                                  size: defaultSize,
-                                                  color: defaultColor,
-                                                );
-                                              }
+                                              showModalBottomSheet(
+                                                context: outerContext,
+                                                isScrollControlled: true,
+                                                shape:
+                                                    const RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                            top:
+                                                                Radius.circular(
+                                                                  20,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                builder: (modalContext) {
+                                                  int? selectedSize;
+                                                  Color? selectedColor;
+
+                                                  double w =
+                                                      MediaQuery.of(
+                                                        modalContext,
+                                                      ).size.width;
+                                                  double h =
+                                                      MediaQuery.of(
+                                                        modalContext,
+                                                      ).size.height;
+
+                                                  return StatefulBuilder(
+                                                    builder: (
+                                                      context,
+                                                      setModalState,
+                                                    ) {
+                                                      return Padding(
+                                                        padding: EdgeInsets.only(
+                                                          left: w * 0.05,
+                                                          right: w * 0.05,
+                                                          top: h * 0.02,
+                                                          bottom:
+                                                              MediaQuery.of(
+                                                                    modalContext,
+                                                                  )
+                                                                  .viewInsets
+                                                                  .bottom +
+                                                              h * 0.03,
+                                                        ),
+                                                        child: SingleChildScrollView(
+                                                          child: Column(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Center(
+                                                                child: Text(
+                                                                  "Choose Size & Color",
+                                                                  style: TextStyle(
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    fontSize:
+                                                                        w *
+                                                                        0.05,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                height:
+                                                                    h * 0.02,
+                                                              ),
+
+                                                              // Size Choices
+                                                              Text(
+                                                                "Size:",
+                                                                style: TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  fontSize:
+                                                                      w * 0.04,
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                height:
+                                                                    h * 0.01,
+                                                              ),
+                                                              Wrap(
+                                                                spacing:
+                                                                    w * 0.02,
+                                                                runSpacing:
+                                                                    h * 0.01,
+                                                                children:
+                                                                    (product.sizes ??
+                                                                            [])
+                                                                        .map((
+                                                                          size,
+                                                                        ) {
+                                                                          return ChoiceChip(
+                                                                            label: Text(
+                                                                              size.toString(),
+                                                                              style: TextStyle(
+                                                                                fontSize:
+                                                                                    w *
+                                                                                    0.035,
+                                                                              ),
+                                                                            ),
+                                                                            selected:
+                                                                                selectedSize ==
+                                                                                size,
+                                                                            onSelected: (
+                                                                              _,
+                                                                            ) {
+                                                                              setModalState(
+                                                                                () =>
+                                                                                    selectedSize =
+                                                                                        size,
+                                                                              );
+                                                                            },
+                                                                            selectedColor: Colors.deepOrange.withOpacity(
+                                                                              0.8,
+                                                                            ),
+                                                                          );
+                                                                        })
+                                                                        .toList(),
+                                                              ),
+                                                              SizedBox(
+                                                                height:
+                                                                    h * 0.025,
+                                                              ),
+
+                                                              // Color Choices
+                                                              Text(
+                                                                "Color:",
+                                                                style: TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  fontSize:
+                                                                      w * 0.04,
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                height:
+                                                                    h * 0.01,
+                                                              ),
+                                                              Wrap(
+                                                                spacing:
+                                                                    w * 0.03,
+                                                                runSpacing:
+                                                                    h * 0.01,
+                                                                children:
+                                                                    (product.colors ??
+                                                                            [])
+                                                                        .map((
+                                                                          color,
+                                                                        ) {
+                                                                          return GestureDetector(
+                                                                            onTap:
+                                                                                () => setModalState(
+                                                                                  () =>
+                                                                                      selectedColor =
+                                                                                          color,
+                                                                                ),
+                                                                            child: Container(
+                                                                              decoration: BoxDecoration(
+                                                                                shape:
+                                                                                    BoxShape.circle,
+                                                                                border: Border.all(
+                                                                                  color:
+                                                                                      selectedColor ==
+                                                                                              color
+                                                                                          ? Colors.deepOrange
+                                                                                          : Colors.grey,
+                                                                                  width:
+                                                                                      w *
+                                                                                      0.007,
+                                                                                ),
+                                                                              ),
+                                                                              child: CircleAvatar(
+                                                                                backgroundColor:
+                                                                                    color,
+                                                                                radius:
+                                                                                    w *
+                                                                                    0.045,
+                                                                              ),
+                                                                            ),
+                                                                          );
+                                                                        })
+                                                                        .toList(),
+                                                              ),
+                                                              SizedBox(
+                                                                height:
+                                                                    h * 0.04,
+                                                              ),
+
+                                                              // Add to Cart Button
+                                                              SizedBox(
+                                                                width:
+                                                                    double
+                                                                        .infinity,
+                                                                height:
+                                                                    h * 0.06,
+                                                                child: ElevatedButton.icon(
+                                                                  style: ElevatedButton.styleFrom(
+                                                                    backgroundColor:
+                                                                        Colors
+                                                                            .deepOrange,
+                                                                    shape: RoundedRectangleBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            w *
+                                                                                0.03,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  icon: Icon(
+                                                                    Icons
+                                                                        .shopping_cart_outlined,
+                                                                    color:
+                                                                        Colors
+                                                                            .white,
+                                                                    size:
+                                                                        w *
+                                                                        0.06,
+                                                                  ),
+                                                                  label: Text(
+                                                                    "Add to Cart",
+                                                                    style: TextStyle(
+                                                                      color:
+                                                                          Colors
+                                                                              .white,
+                                                                      fontSize:
+                                                                          w *
+                                                                          0.04,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                    ),
+                                                                  ),
+                                                                  onPressed: () async {
+                                                                    if (selectedSize ==
+                                                                            null ||
+                                                                        selectedColor ==
+                                                                            null) {
+                                                                      Flushbar(
+                                                                        message:
+                                                                            "Please choose size and color before adding.",
+                                                                        backgroundColor:
+                                                                            const Color.fromARGB(255, 251, 54, 54),
+                                                                        duration: const Duration(
+                                                                          seconds:
+                                                                              2,
+                                                                        ),
+                                                                        margin:
+                                                                            const EdgeInsets.all(
+                                                                              8,
+                                                                            ),
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              12,
+                                                                            ),
+                                                                        flushbarPosition:
+                                                                            FlushbarPosition.TOP,
+                                                                      ).show(
+                                                                        outerContext,
+                                                                      );
+                                                                      return;
+                                                                    }
+
+                                                                    await FirestoreService.addOrUpdateCart(
+                                                                      product,
+                                                                      size:
+                                                                          selectedSize!,
+                                                                      color:
+                                                                          selectedColor!,
+                                                                    );
+
+                                                                    Navigator.pop(
+                                                                      modalContext,
+                                                                    );
+
+                                                                    Flushbar(
+                                                                      message:
+                                                                          "Product added to cart!",
+                                                                      backgroundColor:
+                                                                          Colors
+                                                                              .green,
+                                                                      duration: const Duration(
+                                                                        seconds:
+                                                                            2,
+                                                                      ),
+                                                                      margin:
+                                                                          const EdgeInsets.all(
+                                                                            8,
+                                                                          ),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            12,
+                                                                          ),
+                                                                      flushbarPosition:
+                                                                          FlushbarPosition
+                                                                              .TOP,
+                                                                      icon: const Icon(
+                                                                        Icons
+                                                                            .check,
+                                                                        color:
+                                                                            Colors.white,
+                                                                      ),
+                                                                    ).show(
+                                                                      outerContext,
+                                                                    );
+                                                                  },
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  );
+                                                },
+                                              );
                                             },
                                           ),
                                         ),
