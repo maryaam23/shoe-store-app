@@ -33,7 +33,7 @@ class CategoriesPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                   builder: (_) => ProductPage(
+                  builder: (_) => ProductPage(
                     selectedFilterName: category["name"] as String,
                     filterType: "category",
                   ),

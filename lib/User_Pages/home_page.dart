@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoe_store_app/User_Pages/brands_page.dart';
 import 'product_detailes_page.dart';
 import 'profile_page.dart';
 import 'categories_page.dart';
-import 'brands_page.dart';
 import 'wishlist_page.dart';
 import 'cart_page.dart';
+import 'product_add_sheet.dart';
+import 'package:image_picker/image_picker.dart';
+import 'login_page.dart';
 import 'user_notification_page.dart';
 import 'product_page.dart'; // Product model
 import '../firestore_service.dart'; // FirestoreService class
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:another_flushbar/flushbar.dart';
 
 class HomePage extends StatefulWidget {
   final bool isGuest;
@@ -28,11 +32,12 @@ class _HomePageState extends State<HomePage> {
     "My Profile",
   ];
 
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final user = FirebaseAuth.instance.currentUser;
+  final TextEditingController searchController = TextEditingController();
+
   late Stream<QuerySnapshot> cartStream;
   late Stream<QuerySnapshot> wishlistStream;
-
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  final TextEditingController searchController = TextEditingController();
 
   // Map of color names for search
   final Map<String, Color> colorNames = {
@@ -224,6 +229,60 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
+          // 🧩 Guest notice box (show only if guest)
+          if (widget.isGuest)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: w * 0.04, vertical: 8),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(w * 0.04),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 255, 244, 230),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orangeAccent, width: 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.orange),
+                    SizedBox(width: w * 0.03),
+                    Expanded(
+                      child: Text(
+                        "You are browsing now without logging in. To buy, please log in.",
+                        style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                      ),
+                    ),
+                    SizedBox(width: w * 0.02),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: w * 0.04,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginPage(fromProfile: true),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Login",
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // 🟧 BrandsPage (horizontal circle)
           const BrandsBar(),
 
@@ -325,8 +384,12 @@ class _HomePageState extends State<HomePage> {
                           crossAxisSpacing: w * 0.03,
                           childAspectRatio: 0.7,
                         ),
+
+                        //itemCount: products.length,
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
+                          //final product = products[index];
+
                           final product = filtered[index];
                           final isInCart = cartIds.contains(product.id);
                           final isInWishlist = wishlistIds.contains(product.id);
@@ -437,25 +500,25 @@ class _HomePageState extends State<HomePage> {
                                                 product.id,
                                               );
                                             } else {
-                                              int defaultSize =
-                                                  (product.sizes != null &&
-                                                          product
-                                                              .sizes!
-                                                              .isNotEmpty)
-                                                      ? product.sizes!.first
-                                                      : 0;
-                                              Color defaultColor =
-                                                  (product.colors != null &&
-                                                          product
-                                                              .colors!
-                                                              .isNotEmpty)
-                                                      ? product.colors!.first
-                                                      : Colors.black;
-
-                                              await FirestoreService.addToCart(
-                                                product,
-                                                size: defaultSize,
-                                                color: defaultColor,
+                                              // 🩳 Instead of adding directly, open the half-page sheet
+                                              showModalBottomSheet(
+                                                context: context,
+                                                isScrollControlled: true,
+                                                backgroundColor: Colors.white,
+                                                shape:
+                                                    const RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                            top:
+                                                                Radius.circular(
+                                                                  20,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                builder:
+                                                    (_) => ProductAddSheet(
+                                                      product: product,
+                                                    ),
                                               );
                                             }
                                           },

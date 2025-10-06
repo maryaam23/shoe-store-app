@@ -20,6 +20,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  bool _isRedirecting = false; // ✅ Added flag
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   final List<String> _genders = ["Male", "Female", "Other"];
@@ -67,6 +68,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     // 2️⃣ If guest, redirect to LoginPage with back arrow
     if (widget.isGuest) {
+      _isRedirecting = true; // mark before redirect
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacement(
           context,
@@ -85,6 +87,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
     double h = MediaQuery.of(context).size.height;
+
+    // 🧠 Prevent flicker by returning empty screen during redirect
+    if (_isRedirecting) {
+      return const SizedBox.shrink();
+    }
 
     User? user = _auth.currentUser;
     if (user == null) {

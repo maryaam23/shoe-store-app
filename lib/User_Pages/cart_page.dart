@@ -139,296 +139,343 @@ class _CartPageState extends State<CartPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: StreamBuilder<QuerySnapshot>(
-        stream:
-            FirebaseFirestore.instance
-                .collection("users")
-                .doc(user!.uid) // the error is here it stop the program 
-                .collection("cart")
-                .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final cartDocs = snapshot.data!.docs;
-
-          if (cartDocs.isEmpty) {
-            return Center(
-              child: Text(
-                "Your cart is empty",
-                style: GoogleFonts.inter(
-                  fontSize: 16 * textScale,
-                  fontWeight: FontWeight.w500,
+      body:
+          user == null // to check if its guest 
+              ? const Center(
+                child: Text(
+                  "Please log in to view your cart.",
+                  style: TextStyle(fontSize: 18),
                 ),
-              ),
-            );
-          }
+              )
+              : StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection("users")
+                        .doc(user!.uid) // the error is here it stop the program
+                        .collection("cart")
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-          final subtotal = _calculateSubtotal(cartDocs);
-          final total = subtotal;
+                  final cartDocs = snapshot.data!.docs;
 
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: cartDocs.length,
-                  itemBuilder: (context, index) {
-                    final cartItem = cartDocs[index];
-                    final cartId = cartItem.id;
-                    final productId = cartItem['id'];
+                  if (cartDocs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "Your cart is empty",
+                        style: GoogleFonts.inter(
+                          fontSize: 16 * textScale,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  }
 
-                    // Fetch product document to get all sizes/colors
-                    return FutureBuilder<DocumentSnapshot>(
-                      future:
-                          FirebaseFirestore.instance
-                              .collection('Nproducts')
-                              .doc(productId)
-                              .get(),
-                      builder: (context, productSnapshot) {
-                        if (!productSnapshot.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
+                  final subtotal = _calculateSubtotal(cartDocs);
+                  final total = subtotal;
 
-                        final productData = productSnapshot.data!;
-                        final sizes = List<dynamic>.from(
-                          productData['sizes'] ?? [],
-                        );
-                        final colors = List<dynamic>.from(
-                          productData['colors'] ?? [],
-                        );
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: cartDocs.length,
+                          itemBuilder: (context, index) {
+                            final cartItem = cartDocs[index];
+                            final cartId = cartItem.id;
+                            final productId = cartItem['id'];
 
-                        return Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: w * 0.01,
-                            vertical: h * 0.015,
-                          ),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: Color(0xFFE7EDF4),
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Product image
-                              Card(
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(w * 0.02),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(w * 0.02),
-                                  child:
-                                      (cartItem.data().toString().contains(
-                                                "image",
-                                              ) &&
-                                              cartItem["image"] != null)
-                                          ? Image.network(
-                                            cartItem["image"],
-                                            width: w * 0.22,
-                                            height: w * 0.22,
-                                            fit: BoxFit.cover,
-                                          )
-                                          : Icon(Icons.image, size: w * 0.18),
-                                ),
-                              ),
-                              SizedBox(width: w * 0.01),
+                            // Fetch product document to get all sizes/colors
+                            return FutureBuilder<DocumentSnapshot>(
+                              future:
+                                  FirebaseFirestore.instance
+                                      .collection('Nproducts')
+                                      .doc(productId)
+                                      .get(),
+                              builder: (context, productSnapshot) {
+                                if (!productSnapshot.hasData) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
 
-                              // Product info + Quantity
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      cartItem["name"],
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16 * textScale,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF0D141C),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    SizedBox(height: h * 0.004),
-                                    Text(
-                                      "₪${cartItem["price"]}",
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14 * textScale,
-                                        color: const Color(0xFF49709C),
+                                final productData = productSnapshot.data!;
+                                final sizes = List<dynamic>.from(
+                                  productData['sizes'] ?? [],
+                                );
+                                final colors = List<dynamic>.from(
+                                  productData['colors'] ?? [],
+                                );
+
+                                return Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: w * 0.01,
+                                    vertical: h * 0.015,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: Color(0xFFE7EDF4),
+                                        width: 1,
                                       ),
                                     ),
-
-                                    // Size selection
-                                    GestureDetector(
-                                      onTap: () => _selectSize(cartId, sizes),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 4,
-                                        ),
-                                        child: Text(
-                                          "Size: ${cartItem["size"]}",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13 * textScale,
-                                            color: Colors.black87,
-                                            decoration:
-                                                TextDecoration.underline,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      // Product image
+                                      Card(
+                                        elevation: 2,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            w * 0.02,
                                           ),
                                         ),
-                                      ),
-                                    ),
-
-                                    // Color selection
-                                    GestureDetector(
-                                      onTap: () => _selectColor(cartId, colors),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            "Color: ",
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13 * textScale,
-                                              color: Colors.black87,
-                                            ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            w * 0.02,
                                           ),
-                                          Container(
-                                            width: 16,
-                                            height: 16,
-                                            decoration: BoxDecoration(
-                                              color: Color(cartItem["color"]),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: Colors.grey.shade400,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                          child:
+                                              (cartItem
+                                                          .data()
+                                                          .toString()
+                                                          .contains("image") &&
+                                                      cartItem["image"] != null)
+                                                  ? Image.network(
+                                                    cartItem["image"],
+                                                    width: w * 0.22,
+                                                    height: w * 0.22,
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                  : Icon(
+                                                    Icons.image,
+                                                    size: w * 0.18,
+                                                  ),
+                                        ),
                                       ),
-                                    ),
+                                      SizedBox(width: w * 0.01),
 
-                                    // Quantity controls + Delete
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
+                                      // Product info + Quantity
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            IconButton(
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(
-                                                minWidth: 0,
-                                                minHeight: 0,
-                                              ),
-                                              icon: const Icon(Icons.remove),
-                                              onPressed:
-                                                  () => _decreaseQty(
-                                                    cartId,
-                                                    cartItem["quantity"],
-                                                  ),
-                                            ),
                                             Text(
-                                              "${cartItem["quantity"]}",
+                                              cartItem["name"],
                                               style: GoogleFonts.inter(
-                                                fontSize: 15 * textScale,
-                                                fontWeight: FontWeight.w500,
+                                                fontSize: 16 * textScale,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF0D141C),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            SizedBox(height: h * 0.004),
+                                            Text(
+                                              "₪${cartItem["price"]}",
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14 * textScale,
+                                                color: const Color(0xFF49709C),
                                               ),
                                             ),
-                                            IconButton(
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(
-                                                minWidth: 0,
-                                                minHeight: 0,
-                                              ),
-                                              icon: const Icon(Icons.add),
-                                              onPressed:
-                                                  () => _increaseQty(
+
+                                            // Size selection
+                                            GestureDetector(
+                                              onTap:
+                                                  () => _selectSize(
                                                     cartId,
-                                                    cartItem["quantity"],
+                                                    sizes,
                                                   ),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 4,
+                                                    ),
+                                                child: Text(
+                                                  "Size: ${cartItem["size"]}",
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 13 * textScale,
+                                                    color: Colors.black87,
+                                                    decoration:
+                                                        TextDecoration
+                                                            .underline,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+                                            // Color selection
+                                            GestureDetector(
+                                              onTap:
+                                                  () => _selectColor(
+                                                    cartId,
+                                                    colors,
+                                                  ),
+                                              child: Row(
+                                                children: [
+                                                  Text(
+                                                    "Color: ",
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 13 * textScale,
+                                                      color: Colors.black87,
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    width: 16,
+                                                    height: 16,
+                                                    decoration: BoxDecoration(
+                                                      color: Color(
+                                                        cartItem["color"],
+                                                      ),
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                        color:
+                                                            Colors
+                                                                .grey
+                                                                .shade400,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // Quantity controls + Delete
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    IconButton(
+                                                      padding: EdgeInsets.zero,
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                            minWidth: 0,
+                                                            minHeight: 0,
+                                                          ),
+                                                      icon: const Icon(
+                                                        Icons.remove,
+                                                      ),
+                                                      onPressed:
+                                                          () => _decreaseQty(
+                                                            cartId,
+                                                            cartItem["quantity"],
+                                                          ),
+                                                    ),
+                                                    Text(
+                                                      "${cartItem["quantity"]}",
+                                                      style: GoogleFonts.inter(
+                                                        fontSize:
+                                                            15 * textScale,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      padding: EdgeInsets.zero,
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                            minWidth: 0,
+                                                            minHeight: 0,
+                                                          ),
+                                                      icon: const Icon(
+                                                        Icons.add,
+                                                      ),
+                                                      onPressed:
+                                                          () => _increaseQty(
+                                                            cartId,
+                                                            cartItem["quantity"],
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                IconButton(
+                                                  padding: EdgeInsets.zero,
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                        minWidth: 0,
+                                                        minHeight: 0,
+                                                      ),
+                                                  icon: Icon(
+                                                    Icons.delete,
+                                                    color: Colors.red,
+                                                    size: 18 * textScale,
+                                                  ),
+                                                  onPressed:
+                                                      () => _removeFromCart(
+                                                        cartId,
+                                                      ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
-                                        IconButton(
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(
-                                            minWidth: 0,
-                                            minHeight: 0,
-                                          ),
-                                          icon: Icon(
-                                            Icons.delete,
-                                            color: Colors.red,
-                                            size: 18 * textScale,
-                                          ),
-                                          onPressed:
-                                              () => _removeFromCart(cartId),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              // Summary Section
-              Padding(
-                padding: EdgeInsets.all(w * 0.04),
-                child: Column(
-                  children: [
-                    Divider(thickness: 1, color: Colors.grey[300]),
-                    _buildSummaryRow(
-                      "Total",
-                      "₪${total.toStringAsFixed(2)}",
-                      w,
-                      textScale: textScale,
-                      isBold: true,
-                    ),
-                    SizedBox(height: h * 0.02),
-                    SizedBox(
-                      width: double.infinity,
-                      height: h * 0.065,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D78F2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(w * 0.03),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CheckoutPage(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          "Checkout",
-                          style: GoogleFonts.inter(
-                            fontSize: 16 * textScale,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
                       ),
-                    ),
-                  ],
-                ),
+
+                      // Summary Section
+                      Padding(
+                        padding: EdgeInsets.all(w * 0.04),
+                        child: Column(
+                          children: [
+                            Divider(thickness: 1, color: Colors.grey[300]),
+                            _buildSummaryRow(
+                              "Total",
+                              "₪${total.toStringAsFixed(2)}",
+                              w,
+                              textScale: textScale,
+                              isBold: true,
+                            ),
+                            SizedBox(height: h * 0.02),
+                            SizedBox(
+                              width: double.infinity,
+                              height: h * 0.065,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0D78F2),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      w * 0.03,
+                                    ),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const CheckoutPage(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  "Checkout",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16 * textScale,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-            ],
-          );
-        },
-      ),
     );
   }
 

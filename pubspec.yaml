@@ -59,6 +59,7 @@ dependencies:
   geocoding: ^2.1.0
   share_plus: 11.1.0
   pdf: ^3.11.3
+  another_flushbar: ^1.10.27
  
 
   
