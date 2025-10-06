@@ -8,9 +8,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'login_page.dart';
+import 'home_page.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final bool isGuest;
+
+  const ProfilePage({super.key, required this.isGuest});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -40,6 +43,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     final user = _auth.currentUser;
+    // 1️⃣ Load user data if logged in
     if (user != null) {
       FirebaseFirestore.instance
           .collection("users")
@@ -58,10 +62,22 @@ class _ProfilePageState extends State<ProfilePage> {
           })
           .catchError((e) {
             debugPrint("Error loading user data in initState: $e");
-
-
-            
           });
+    }
+
+    // 2️⃣ If guest, redirect to LoginPage with back arrow
+    if (widget.isGuest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (_) => const LoginPage(
+                  fromProfile: true, // <-- tells LoginPage to show back arrow
+                ),
+          ),
+        );
+      });
     }
   }
 
@@ -73,6 +89,10 @@ class _ProfilePageState extends State<ProfilePage> {
     User? user = _auth.currentUser;
     if (user == null) {
       return const Center(child: Text("No user logged in"));
+    }
+
+    if (widget.isGuest) {
+      return const SizedBox.shrink();
     }
 
     return StreamBuilder<DocumentSnapshot>(

@@ -10,7 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final bool fromProfile;
+
+  const LoginPage({super.key, this.fromProfile = false});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -33,6 +35,8 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  bool isGuest = false;
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -49,6 +53,25 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading:
+            widget.fromProfile
+                ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  onPressed: () {
+                    // Go back to HomePage as guest
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HomePage(isGuest: true),
+                      ),
+                    );
+                  },
+                )
+                : null,
+      ),
       body: GestureDetector(
         onTap: () {
           FocusScope.of(context).unfocus(); // dismiss keyboard
@@ -236,112 +259,165 @@ class _LoginPageState extends State<LoginPage> {
 
                             SizedBox(height: spacing / 2),
 
-                            // Login Button
+                            // Login + Guest Buttons
                             Center(
-                              child: SizedBox(
-                                height: buttonHeight,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color.fromARGB(
-                                      255,
-                                      0,
-                                      0,
-                                      0,
-                                    ), // professional blue
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        size.width * 0.05,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Login Button
+                                  SizedBox(
+                                    height: buttonHeight,
+                                    width: 140, // you can adjust width
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          0,
+                                          0,
+                                          0,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            size.width * 0.05,
+                                          ),
+                                        ),
+                                        shadowColor: const Color.fromARGB(
+                                          255,
+                                          0,
+                                          0,
+                                          0,
+                                        ),
+                                        elevation: 5,
                                       ),
-                                    ),
-                                    shadowColor: Colors.black45,
-                                    elevation: 5,
-                                  ),
-                                  onPressed: () async {
-                                    if (_formKey.currentState?.validate() ??
-                                        false) {
-                                      try {
-                                        // Sign in
-                                        final userCredential =
-                                            await FirebaseAuth.instance
-                                                .signInWithEmailAndPassword(
-                                                  email:
-                                                      _controllerUsername.text
-                                                          .trim(),
-                                                  password:
-                                                      _controllerPassword.text
-                                                          .trim(),
-                                                );
-
-                                        User? user = userCredential.user;
-                                        await user
-                                            ?.reload(); // Refresh user info
-
-                                        if (user != null &&
-                                            user.emailVerified) {
-                                          // ✅ Verified, go to home
-                                          
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => HomePage(),
-                                            ),
-                                          );
-                                        } else {
-                                          // ❌ Not verified
-                                          await FirebaseAuth.instance.signOut();
-                                          showSnackBar(
-                                            "Please verify your email before logging in.",
-                                            color: Colors.red,
-                                          );
-
-                                          // Optional: resend verification email
+                                      onPressed: () async {
+                                        if (_formKey.currentState?.validate() ??
+                                            false) {
                                           try {
-                                            await user?.sendEmailVerification(
-                                              ActionCodeSettings(
-                                                url:
-                                                    'https://sport-brands-42c8a.web.app',
-                                                handleCodeInApp: false,
-                                                androidPackageName:
-                                                    'com.example.shoe_store_app',
-                                                androidInstallApp: true,
-                                                androidMinimumVersion: '21',
-                                                iOSBundleId:
-                                                    'com.example.shoeStoreApp',
-                                              ),
-                                            );
+                                            final userCredential =
+                                                await FirebaseAuth.instance
+                                                    .signInWithEmailAndPassword(
+                                                      email:
+                                                          _controllerUsername
+                                                              .text
+                                                              .trim(),
+                                                      password:
+                                                          _controllerPassword
+                                                              .text
+                                                              .trim(),
+                                                    );
+
+                                            User? user = userCredential.user;
+                                            await user?.reload();
+
+                                            if (user != null &&
+                                                user.emailVerified) {
+                                              Navigator.pushReplacement(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => HomePage(),
+                                                ),
+                                              );
+                                            } else {
+                                              await FirebaseAuth.instance
+                                                  .signOut();
+                                              showSnackBar(
+                                                "Please verify your email before logging in.",
+                                                color: Colors.red,
+                                              );
+
+                                              try {
+                                                await user?.sendEmailVerification(
+                                                  ActionCodeSettings(
+                                                    url:
+                                                        'https://sport-brands-42c8a.web.app',
+                                                    handleCodeInApp: false,
+                                                    androidPackageName:
+                                                        'com.example.shoe_store_app',
+                                                    androidInstallApp: true,
+                                                    androidMinimumVersion: '21',
+                                                    iOSBundleId:
+                                                        'com.example.shoeStoreApp',
+                                                  ),
+                                                );
+                                                showSnackBar(
+                                                  "Verification email resent! Check your inbox.",
+                                                  color: Colors.green,
+                                                );
+                                              } catch (e) {
+                                                print(
+                                                  "❌ Failed to resend verification email: $e",
+                                                );
+                                              }
+                                            }
+                                          } on FirebaseAuthException catch (e) {
                                             showSnackBar(
-                                              "Verification email resent! Check your inbox.",
-                                              color: Colors.green,
-                                            );
-                                          } catch (e) {
-                                            print(
-                                              "❌ Failed to resend verification email: $e",
+                                              "Login failed: ${e.message}",
                                             );
                                           }
                                         }
-                                      } on FirebaseAuthException catch (e) {
-                                        showSnackBar(
-                                          "Login failed: ${e.message}",
-                                        );
-                                      }
-                                    }
-                                  },
-
-                                  child: Text(
-                                    "Login",
-                                    style: TextStyle(
-                                      fontSize: buttonFontSize,
-                                      color: const Color.fromARGB(
-                                        255,
-                                        255,
-                                        255,
-                                        255,
+                                      },
+                                      child: Text(
+                                        "Login",
+                                        style: TextStyle(
+                                          fontSize: buttonFontSize,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+
+                                  const SizedBox(width: 15),
+
+                                  // Guest Button
+                                  SizedBox(
+                                    height: buttonHeight,
+                                    width:
+                                        140, // same width as login for symmetry
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          0,
+                                          0,
+                                          0,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            size.width * 0.05,
+                                          ),
+                                        ),
+                                        shadowColor: const Color.fromARGB(
+                                          255,
+                                          0,
+                                          0,
+                                          0,
+                                        ),
+                                        elevation: 5,
+                                      ),
+                                      onPressed: () {
+                                        isGuest = true; // ✅ Guest login mode
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (_) =>
+                                                    HomePage(isGuest: isGuest),
+                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        "Guest",
+                                        style: TextStyle(
+                                          fontSize: buttonFontSize,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+
                             SizedBox(height: spacing / 2),
 
                             // Signup link

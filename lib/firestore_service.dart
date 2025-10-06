@@ -54,7 +54,10 @@ class FirestoreService {
 
   static Stream<QuerySnapshot> getCart() {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception("No user logged in");
+    if (user == null) {
+      // 🔹 Return empty stream for guest users
+      return const Stream.empty();
+    }
 
     return _db
         .collection("users")
@@ -137,7 +140,10 @@ class FirestoreService {
 
   static Stream<QuerySnapshot> getWishlist() {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception("No user logged in");
+    if (user == null) {
+      // 🔹 Return empty stream for guest users
+      return const Stream.empty();
+    }
 
     return _db
         .collection("users")

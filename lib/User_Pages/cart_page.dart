@@ -143,7 +143,7 @@ class _CartPageState extends State<CartPage> {
         stream:
             FirebaseFirestore.instance
                 .collection("users")
-                .doc(user!.uid)
+                .doc(user!.uid) // the error is here it stop the program 
                 .collection("cart")
                 .snapshots(),
         builder: (context, snapshot) {

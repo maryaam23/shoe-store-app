@@ -9,6 +9,7 @@ class BrandsBar extends StatelessWidget {
     {"name": "Adidas", "image": "assets/adidas.png"},
     {"name": "Puma", "image": "assets/puma.png"},
     {"name": "Reebok", "image": "assets/reebok.png"},
+    {"name": "Columbia", "image": "assets/columbia.png"},
     {"name": "New Balance", "image": "assets/new_balance.png"},
     {"name": "Converse", "image": "assets/converse.png"},
     {"name": "Under Armour", "image": "assets/under_armour.png"},

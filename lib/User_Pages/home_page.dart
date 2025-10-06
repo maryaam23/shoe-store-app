@@ -12,7 +12,8 @@ import '../firestore_service.dart'; // FirestoreService class
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final bool isGuest;
+  const HomePage({super.key, this.isGuest = false});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -152,15 +153,14 @@ class _HomePageState extends State<HomePage> {
                   ]
                   : null,
         ),
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            buildHomeBody(w, h),
-            const CartPage(),
-            const WishlistPage(),
-            const ProfilePage(),
-          ],
-        ),
+        body:
+            _selectedIndex == 0
+                ? buildHomeBody(w, h)
+                : _selectedIndex == 1
+                ? const CartPage()
+                : _selectedIndex == 2
+                ? const WishlistPage()
+                : ProfilePage(isGuest: widget.isGuest),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           selectedItemColor: Colors.deepOrange,
@@ -403,89 +403,114 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     child: Row(
                                       children: [
-                                        // Cart button
-                                        Container(
-                                          width: w * 0.12,
-                                          height: h * 0.05,
-                                          decoration: BoxDecoration(
+                                        // 🛒 Cart button (left)
+                                        IconButton(
+                                          iconSize: w * 0.06,
+                                          icon: Icon(
+                                            Icons.shopping_bag,
                                             color:
                                                 isInCart
-                                                    ? Colors.green
-                                                    : Colors.deepOrange,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
+                                                    ? Colors.deepOrange
+                                                    : Colors.black,
                                           ),
-                                          child: IconButton(
-                                            padding: EdgeInsets.zero,
-                                            iconSize: w * 0.06,
-                                            icon: const Icon(
-                                              Icons.add_shopping_cart_outlined,
-                                              color: Colors.white,
-                                            ),
-                                            onPressed: () async {
-                                              if (isInCart) {
-                                                await FirestoreService.removeFromCart(
-                                                  product.id,
-                                                );
-                                              } else {
-                                                int defaultSize =
-                                                    (product.sizes != null &&
-                                                            product
-                                                                .sizes!
-                                                                .isNotEmpty)
-                                                        ? product.sizes!.first
-                                                        : 0;
-                                                Color defaultColor =
-                                                    (product.colors != null &&
-                                                            product
-                                                                .colors!
-                                                                .isNotEmpty)
-                                                        ? product.colors!.first
-                                                        : Colors.black;
+                                          onPressed: () async {
+                                            // 🚫 Prevent guest from adding to cart
+                                            if (widget.isGuest) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    "Please login first",
+                                                  ),
+                                                  backgroundColor: Colors.red,
+                                                  duration: Duration(
+                                                    seconds: 2,
+                                                  ),
+                                                ),
+                                              );
+                                              return;
+                                            }
 
-                                                await FirestoreService.addToCart(
-                                                  product,
-                                                  size: defaultSize,
-                                                  color: defaultColor,
-                                                );
-                                              }
-                                            },
-                                          ),
+                                            if (isInCart) {
+                                              await FirestoreService.removeFromCart(
+                                                product.id,
+                                              );
+                                            } else {
+                                              int defaultSize =
+                                                  (product.sizes != null &&
+                                                          product
+                                                              .sizes!
+                                                              .isNotEmpty)
+                                                      ? product.sizes!.first
+                                                      : 0;
+                                              Color defaultColor =
+                                                  (product.colors != null &&
+                                                          product
+                                                              .colors!
+                                                              .isNotEmpty)
+                                                      ? product.colors!.first
+                                                      : Colors.black;
+
+                                              await FirestoreService.addToCart(
+                                                product,
+                                                size: defaultSize,
+                                                color: defaultColor,
+                                              );
+                                            }
+                                          },
                                         ),
-                                        SizedBox(width: w * 0.04),
-                                        // Wishlist button
-                                        Container(
-                                          width: w * 0.12,
-                                          height: h * 0.05,
-                                          decoration: BoxDecoration(
+
+                                        const Spacer(),
+
+                                        // ❤️ Wishlist button (right)
+                                        IconButton(
+                                          iconSize: w * 0.065,
+                                          icon: Icon(
+                                            isInWishlist
+                                                ? Icons.favorite
+                                                : Icons
+                                                    .favorite_border, // 👈 Border when false
                                             color:
                                                 isInWishlist
-                                                    ? Colors.pink
-                                                    : Colors.deepOrange,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
+                                                    ? const Color.fromARGB(
+                                                      255,
+                                                      255,
+                                                      17,
+                                                      0,
+                                                    )
+                                                    : Colors
+                                                        .black, // 👈 Red when pressed
                                           ),
-                                          child: IconButton(
-                                            padding: EdgeInsets.zero,
-                                            iconSize: w * 0.055,
-                                            icon: const Icon(
-                                              Icons.favorite,
-                                              color: Colors.white,
-                                            ),
-                                            onPressed: () async {
-                                              if (isInWishlist) {
-                                                await FirestoreService.removeFromWishlist(
-                                                  product.id,
-                                                );
-                                              } else {
-                                                await FirestoreService.addToWishlist(
-                                                  product,
-                                                );
-                                              }
-                                            },
-                                          ),
+                                          onPressed: () async {
+                                            // 🚫 Prevent guest from adding to wishlist
+                                            if (widget.isGuest) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    "Please login first",
+                                                  ),
+                                                  backgroundColor: Colors.red,
+                                                  duration: Duration(
+                                                    seconds: 2,
+                                                  ),
+                                                ),
+                                              );
+                                              return;
+                                            }
+
+                                            if (isInWishlist) {
+                                              await FirestoreService.removeFromWishlist(
+                                                product.id,
+                                              );
+                                            } else {
+                                              await FirestoreService.addToWishlist(
+                                                product,
+                                              );
+                                            }
+                                          },
                                         ),
                                       ],
                                     ),
