@@ -518,6 +518,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   item["image"],
                                   width: w * 0.12,
                                   height: w * 0.12,
+                                  fit: BoxFit.cover,
                                 )
                                 : Icon(Icons.image, size: w * 0.12),
                       ),
@@ -528,12 +529,54 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           fontSize: w * 0.045,
                         ),
                       ),
-                      subtitle: Text(
-                        "Quantity: ${item["quantity"]}",
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF49709C),
-                          fontSize: w * 0.035,
-                        ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Quantity: ${item["quantity"]}",
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF49709C),
+                              fontSize: w * 0.035,
+                            ),
+                          ),
+                          if (item["size"] != null)
+                            Padding(
+                              padding: EdgeInsets.only(top: h * 0.003),
+                              child: Text(
+                                "Size: ${item["size"]}",
+                                style: GoogleFonts.inter(
+                                  fontSize: w * 0.035,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                          if (item["color"] != null)
+                            Padding(
+                              padding: EdgeInsets.only(top: h * 0.003),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    "Color: ",
+                                    style: GoogleFonts.inter(
+                                      fontSize: w * 0.035,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  Container(
+                                    width: w * 0.04,
+                                    height: w * 0.04,
+                                    decoration: BoxDecoration(
+                                      color: Color(item["color"]),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                       trailing: Text(
                         "₪${(item["price"] * item["quantity"]).toStringAsFixed(2)}",
@@ -544,6 +587,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                     ),
                   ),
+
                   _summaryRow("Subtotal", "₪${subtotal.toStringAsFixed(2)}", w),
                   _summaryRow("Shipping", "₪${shipping.toStringAsFixed(2)}", w),
                   _summaryRow(
@@ -674,16 +718,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       .set(orderData);
 
                   // Decrease quantity in Nproducts
+                  // Decrease quantity in Nproducts
                   for (var item in cartDocs) {
                     final productId =
-                        item.id; // assumes cart item doc id == Nproducts doc id
+                        item["id"]; // ✅ correct: field that matches Nproducts ID
                     final productRef = FirebaseFirestore.instance
                         .collection("Nproducts")
                         .doc(productId);
+
                     await FirebaseFirestore.instance.runTransaction((
                       transaction,
                     ) async {
                       final snapshot = await transaction.get(productRef);
+
+                      if (!snapshot.exists) {
+                        debugPrint(
+                          "⚠️ Product $productId not found, skipping update.",
+                        );
+                        return;
+                      }
+
                       final currentQty = snapshot["quantity"] ?? 0;
                       final newQty = (currentQty - item["quantity"]).clamp(
                         0,
@@ -807,6 +861,4 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ),
     );
   }
-
-  
 }

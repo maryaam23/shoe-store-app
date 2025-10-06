@@ -10,7 +10,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // ========================
 class ProductDetailPage extends StatefulWidget {
   final Product product;
-  const ProductDetailPage({super.key, required this.product});
+  final bool isGuest; // ✅ Added isGuest
+
+  const ProductDetailPage({
+    super.key,
+    required this.product,
+    this.isGuest = false, // default to false if not provided
+  });
 
   @override
   State<ProductDetailPage> createState() => _ProductDetailPageState();
@@ -329,6 +335,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // ❤️ Wishlist Button
+                  // ❤️ Wishlist Button
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -348,6 +355,19 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         size: fontSize(28),
                       ),
                       onPressed: () async {
+                        // 🚫 Prevent guest from adding to wishlist
+                        if (widget.isGuest) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Please login first"),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          return;
+                        }
+
+                        // ❤️ Toggle wishlist state
                         if (isInWishlist) {
                           await FirestoreService.removeFromWishlist(
                             widget.product.id,
@@ -355,28 +375,49 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         } else {
                           await FirestoreService.addToWishlist(widget.product);
                         }
+
                         setState(() => isInWishlist = !isInWishlist);
                       },
                     ),
                   ),
 
                   // 🛒 Add to Cart Button
+                  // 🛒 Add to Cart Button
+                  // 🛒 Add to Cart Button
                   ElevatedButton(
                     onPressed:
                         widget.product.inStock
                             ? () async {
-                              if (isInCart) {
-                                await FirestoreService.removeFromCart(
-                                  widget.product.id,
+                              // 🚫 Prevent guest from adding to cart
+                              if (widget.isGuest) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Please login first"),
+                                    backgroundColor: Colors.red,
+                                    duration: Duration(seconds: 2),
+                                  ),
                                 );
-                              } else {
-                                await FirestoreService.addToCart(
-                                  widget.product,
-                                  size: selectedSize,
-                                  color: selectedColor,
-                                );
+                                return;
                               }
-                              setState(() => isInCart = !isInCart);
+
+                              // Add to cart by checking id, size, color
+                              await FirestoreService.addOrUpdateCart(
+                                widget.product,
+                                size: selectedSize,
+                                color: selectedColor,
+                              );
+
+                              // Update local button state
+                              if (mounted) setState(() => isInCart = true);
+
+                              // Show success message
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Product added to cart!"),
+                                  backgroundColor: Colors.green,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
                             }
                             : null,
                     style: ElevatedButton.styleFrom(
@@ -396,7 +437,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                     child: Text(
                       widget.product.inStock
-                          ? (isInCart ? "Remove from Cart" : "Add to Cart")
+                          ? (isInCart ? "In Cart" : "Add to Cart")
                           : "Out of Stock",
                       style: GoogleFonts.poppins(
                         fontSize: fontSize(16),
