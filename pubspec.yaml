@@ -60,6 +60,8 @@ dependencies:
   share_plus: 11.1.0
   pdf: ^3.11.3
   another_flushbar: ^1.10.27
+  rxdart: ^0.28.0
+  intl: ^0.20.2
  
 
   

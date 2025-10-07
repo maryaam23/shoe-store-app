@@ -1,9 +1,11 @@
-// notification_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:intl/intl.dart'; // 👈 Add intl package in pubspec.yaml
 
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({super.key});
+  final String userId;
+  const NotificationScreen({super.key, required this.userId});
 
   @override
   State<NotificationScreen> createState() => _NotificationScreenState();
@@ -18,9 +20,76 @@ class _NotificationScreenState extends State<NotificationScreen> {
     "recommendations",
   ];
 
+  /// Count unread notifications for badge
+  ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
+
   @override
   Widget build(BuildContext context) {
     String selectedCategory = categories[selectedTabIndex];
+
+    /// General notifications stream
+    final generalStream =
+        FirebaseFirestore.instance
+            .collection("UserNotification")
+            .where("category", isEqualTo: selectedCategory)
+            .orderBy("createdAt", descending: true)
+            .snapshots();
+
+    /// User-specific notifications stream
+    final userStream =
+        FirebaseFirestore.instance
+            .collection("users")
+            .doc(widget.userId)
+            .collection("notification")
+            .where("category", isEqualTo: selectedCategory)
+            //.orderBy("createdAt", descending: true) // optional
+            .snapshots();
+
+    /// Combine both streams
+    final combinedStream = CombineLatestStream.combine2<
+      QuerySnapshot,
+      QuerySnapshot,
+      List<Map<String, dynamic>>
+    >(generalStream, userStream, (generalSnap, userSnap) {
+      // Merge docs with collection info
+      List<Map<String, dynamic>> allDocs = [
+        ...generalSnap.docs.map((d) => {'doc': d, 'isUser': false}),
+        ...userSnap.docs.map((d) => {'doc': d, 'isUser': true}),
+      ];
+
+      // Sort by createdAt descending
+      allDocs.sort((a, b) {
+        final aData = a['doc'].data() as Map<String, dynamic>;
+        final bData = b['doc'].data() as Map<String, dynamic>;
+
+        // Convert createdAt safely
+        DateTime aTime;
+        if (aData['createdAt'] is Timestamp) {
+          aTime = (aData['createdAt'] as Timestamp).toDate();
+        } else if (aData['createdAt'] is DateTime) {
+          aTime = aData['createdAt'] as DateTime;
+        } else {
+          aTime = DateTime(0);
+        }
+
+        DateTime bTime;
+        if (bData['createdAt'] is Timestamp) {
+          bTime = (bData['createdAt'] as Timestamp).toDate();
+        } else if (bData['createdAt'] is DateTime) {
+          bTime = bData['createdAt'] as DateTime;
+        } else {
+          bTime = DateTime(0);
+        }
+
+        return bTime.compareTo(aTime); // newest first
+      });
+
+      // Update unread count
+      int count = allDocs.where((d) => d['doc']['isRead'] == false).length;
+      unreadCount.value = count;
+
+      return allDocs;
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -39,6 +108,43 @@ class _NotificationScreenState extends State<NotificationScreen> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          ValueListenableBuilder<int>(
+            valueListenable: unreadCount,
+            builder:
+                (context, value, _) => Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.notifications,
+                        color: Colors.black,
+                      ),
+                      onPressed: () {},
+                    ),
+                    if (value > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$value',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -58,29 +164,38 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
           const Divider(height: 0, color: Color(0xFFCEDAE8)),
 
-          // Firestore Stream
+          // Combined Stream
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection("UserNotification")
-                  .where("category", isEqualTo: selectedCategory)
-                  .orderBy("createdAt", descending: true)
-                  .snapshots(),
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: combinedStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: Text("No notifications found"));
                 }
 
-                final docs = snapshot.data!.docs;
+                final docs = snapshot.data!;
 
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
+                    final docMap = docs[index];
+                    final doc = docMap['doc'] as QueryDocumentSnapshot;
+                    final data = doc.data() as Map<String, dynamic>;
                     bool isRead = data['isRead'] ?? false;
+
+                    // Format createdAt
+                    String dateTimeString = '';
+                    if (data['createdAt'] != null &&
+                        data['createdAt'] is Timestamp) {
+                      DateTime dateTime =
+                          (data['createdAt'] as Timestamp).toDate();
+                      dateTimeString = DateFormat(
+                        'yyyy-MM-dd HH:mm',
+                      ).format(dateTime);
+                    }
 
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(
@@ -94,8 +209,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.image_not_supported),
+                          errorBuilder:
+                              (context, error, stackTrace) =>
+                                  const Icon(Icons.image_not_supported),
                         ),
                       ),
                       title: Text(
@@ -103,26 +219,39 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: !isRead
-                              ? const Color.fromARGB(255, 250, 31, 15)
-                              : const Color(0xFF0D141C),
+                          color:
+                              !isRead
+                                  ? const Color.fromARGB(255, 250, 31, 15)
+                                  : const Color(0xFF0D141C),
                         ),
                       ),
-                      subtitle: Text(
-                        data['subtitle'] ?? '',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: !isRead
-                              ? const Color.fromARGB(255, 0, 0, 0)
-                              : const Color(0xFF49709C),
-                        ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data['subtitle'] ?? '',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color:
+                                  !isRead
+                                      ? const Color.fromARGB(255, 0, 0, 0)
+                                      : const Color(0xFF49709C),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (dateTimeString.isNotEmpty)
+                            Text(
+                              dateTimeString,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                        ],
                       ),
                       onTap: () async {
                         if (!isRead) {
-                          await FirebaseFirestore.instance
-                              .collection("UserNotification")
-                              .doc(docs[index].id)
-                              .update({"isRead": true});
+                          await doc.reference.update({"isRead": true});
                         }
                       },
                     );
@@ -146,9 +275,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
           Text(
             title,
             style: TextStyle(
-              color: isSelected
-                  ? const Color(0xFF0D141C)
-                  : const Color(0xFF49709C),
+              color:
+                  isSelected
+                      ? const Color(0xFF0D141C)
+                      : const Color(0xFF49709C),
               fontWeight: FontWeight.bold,
             ),
           ),

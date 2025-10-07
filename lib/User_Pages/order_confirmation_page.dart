@@ -13,7 +13,7 @@ class OrderConfirmationPage extends StatelessWidget {
   final double subtotal;
   final double shipping;
   final double total;
-  final String orderNumber; // Use this for both UI & PDF
+  final String orderNumber;
 
   const OrderConfirmationPage({
     super.key,
@@ -25,6 +25,9 @@ class OrderConfirmationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Trigger notification when user reaches this page
+    _sendOrderNotification(orderNumber, total);
+
     double w = MediaQuery.of(context).size.width;
     double h = MediaQuery.of(context).size.height;
     final dateNow = DateTime.now();
@@ -87,14 +90,14 @@ class OrderConfirmationPage extends StatelessWidget {
                     child: Column(
                       children: [
                         _infoRow(w, Icons.tag, "Order Number", orderNumber),
-                        Divider(),
+                        const Divider(),
                         _infoRow(
                           w,
                           Icons.date_range,
                           "Order Date",
                           formattedDate,
                         ),
-                        Divider(),
+                        const Divider(),
                         _infoRow(
                           w,
                           Icons.local_shipping,
@@ -107,7 +110,7 @@ class OrderConfirmationPage extends StatelessWidget {
                 ),
                 SizedBox(height: h * 0.03),
 
-                // Order Summary Card
+                // Order Summary
                 Card(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(w * 0.04),
@@ -127,7 +130,7 @@ class OrderConfirmationPage extends StatelessWidget {
                           "₪${shipping.toStringAsFixed(2)}",
                           w,
                         ),
-                        Divider(),
+                        const Divider(),
                         _summaryRow(
                           "Total",
                           "₪${total.toStringAsFixed(2)}",
@@ -140,7 +143,7 @@ class OrderConfirmationPage extends StatelessWidget {
                 ),
                 SizedBox(height: h * 0.04),
 
-                // Secondary Buttons Row
+                // Buttons
                 Row(
                   children: [
                     Expanded(
@@ -171,11 +174,37 @@ class OrderConfirmationPage extends StatelessWidget {
     );
   }
 
-  // ----------------- BUTTON FUNCTIONS -----------------
+  // ----------------- FIRESTORE NOTIFICATION -----------------
+  Future<void> _sendOrderNotification(String orderNumber, double total) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+
+      await userRef.collection('notification').add({
+        "title": "Order #$orderNumber Confirmed 🎉",
+        "subtitle":
+            "Your order of ₪${total.toStringAsFixed(2)} has been placed successfully.",
+        "category": "order_updates",
+        "isRead": false,
+        "createdAt": FieldValue.serverTimestamp(),
+        "image": "https://cdn-icons-png.flaticon.com/512/190/190411.png",
+      });
+
+      debugPrint("✅ Custom order notification added for user ${user.uid}");
+    } catch (e) {
+      debugPrint("❌ Failed to send notification: $e");
+    }
+  }
+
+  // ----------------- PDF SHARE -----------------
   Future<void> _shareReceiptAsPDF(String orderNumber, String date) async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-    String customerName = "Customer"; // default
-    String customerPhone = "N/A"; // default phone
+    String customerName = "Customer";
+    String customerPhone = "N/A";
 
     if (userId != null) {
       final doc =
@@ -191,12 +220,8 @@ class OrderConfirmationPage extends StatelessWidget {
     }
 
     final pdf = pw.Document();
-
-    // Load font that supports ₪
     final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
     final ttf = pw.Font.ttf(fontData);
-
-    // Load logo as bytes
     final logoBytes = await rootBundle.load('assets/logoImage.png');
     final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
@@ -206,7 +231,6 @@ class OrderConfirmationPage extends StatelessWidget {
             (context) => pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // Shop Logo + Name
                 pw.Row(
                   children: [
                     pw.Image(logoImage, width: 60, height: 60),
@@ -223,7 +247,7 @@ class OrderConfirmationPage extends StatelessWidget {
                 ),
                 pw.Divider(height: 20, thickness: 2),
                 pw.Text(
-                  " Order Confirmation ",
+                  "Order Confirmation",
                   style: pw.TextStyle(
                     font: ttf,
                     fontSize: 20,
@@ -274,6 +298,7 @@ class OrderConfirmationPage extends StatelessWidget {
     Share.shareXFiles([XFile(file.path)], text: 'Your Order Receipt');
   }
 
+  // ----------------- CONTINUE SHOPPING -----------------
   void _continueShopping(BuildContext context) {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const HomePage()),
@@ -301,7 +326,7 @@ class OrderConfirmationPage extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
               value,
               style: GoogleFonts.inter(

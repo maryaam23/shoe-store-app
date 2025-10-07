@@ -382,8 +382,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ),
 
                   // 🛒 Add to Cart Button
-                  // 🛒 Add to Cart Button
-                  // 🛒 Add to Cart Button
+                  
                   ElevatedButton(
                     onPressed:
                         widget.product.inStock

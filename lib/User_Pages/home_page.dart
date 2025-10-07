@@ -12,6 +12,7 @@ import 'product_page.dart'; // Product model
 import '../firestore_service.dart'; // FirestoreService class
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:another_flushbar/flushbar.dart';
+import 'package:rxdart/rxdart.dart';
 
 class HomePage extends StatefulWidget {
   final bool isGuest;
@@ -87,15 +88,38 @@ class _HomePageState extends State<HomePage> {
           actions:
               _selectedIndex == 0
                   ? [
-                    StreamBuilder<QuerySnapshot>(
-                      stream:
-                          firestore
-                              .collection("UserNotification")
-                              .where("isRead", isEqualTo: false)
-                              .snapshots(),
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: CombineLatestStream.combine2<
+                        QuerySnapshot,
+                        QuerySnapshot,
+                        List<Map<String, dynamic>>
+                      >(
+                        FirebaseFirestore.instance
+                            .collection("UserNotification")
+                            .where("isRead", isEqualTo: false)
+                            .snapshots(),
+                        FirebaseFirestore.instance
+                            .collection("users")
+                            .doc(FirebaseAuth.instance.currentUser!.uid)
+                            .collection("notification")
+                            .where("isRead", isEqualTo: false)
+                            .snapshots(),
+                        (generalSnap, userSnap) {
+                          // Combine both collections into a single list
+                          List<Map<String, dynamic>> allDocs = [
+                            ...generalSnap.docs.map(
+                              (d) => {'doc': d, 'isUser': false},
+                            ),
+                            ...userSnap.docs.map(
+                              (d) => {'doc': d, 'isUser': true},
+                            ),
+                          ];
+                          return allDocs;
+                        },
+                      ),
                       builder: (context, snapshot) {
                         int unreadCount =
-                            snapshot.hasData ? snapshot.data!.docs.length : 0;
+                            snapshot.hasData ? snapshot.data!.length : 0;
 
                         return Stack(
                           children: [
@@ -106,12 +130,24 @@ class _HomePageState extends State<HomePage> {
                                 size: w * 0.07,
                               ),
                               onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const NotificationScreen(),
-                                  ),
-                                );
+                                final user = FirebaseAuth.instance.currentUser;
+                                if (user != null) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => NotificationScreen(
+                                            userId: user.uid,
+                                          ),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Please log in first"),
+                                    ),
+                                  );
+                                }
                               },
                             ),
                             if (unreadCount > 0)
@@ -138,6 +174,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
+
                     IconButton(
                       icon: Icon(
                         Icons.menu,

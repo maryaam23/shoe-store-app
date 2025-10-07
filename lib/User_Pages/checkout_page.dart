@@ -704,6 +704,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 "quantity": doc["quantity"],
                                 "image": doc["image"] ?? "",
                                 "productId": doc.id,
+                                "size": doc["size"] ?? "",
+                                "color":
+                                    doc["color"] ??
+                                    0, // or keep null if no color
                               },
                             )
                             .toList(),

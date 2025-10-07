@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shoe_store_app/User_Pages/order_history.dart';
 import 'login_page.dart';
 import 'home_page.dart';
 
@@ -518,6 +519,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
 
               // Order History
+              // Order History
               Container(
                 margin: EdgeInsets.symmetric(vertical: h * 0.008),
                 padding: EdgeInsets.symmetric(
@@ -535,19 +537,29 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Order History",
-                      style: GoogleFonts.merriweather(
-                        fontSize: w * 0.045,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OrderHistoryPage(userId: user.uid),
                       ),
-                    ),
-                    Icon(Icons.arrow_forward_ios, size: w * 0.05),
-                  ],
+                    );
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Order History",
+                        style: GoogleFonts.merriweather(
+                          fontSize: w * 0.045,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, size: w * 0.05),
+                    ],
+                  ),
                 ),
               ),
 
