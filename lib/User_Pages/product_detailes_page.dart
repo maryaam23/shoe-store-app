@@ -198,13 +198,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               if (widget.product.quantity != null) ...[
                 SizedBox(height: verticalSpace(8)),
                 Text(
-                  widget.product.inStock
+                  (widget.product.quantity ?? 0) > 0
                       ? "In Stock (${widget.product.quantity} available)"
                       : "Out of Stock",
                   style: GoogleFonts.poppins(
                     fontSize: fontSize(16),
                     fontWeight: FontWeight.w600,
-                    color: widget.product.inStock ? Colors.green : Colors.red,
+                    color:
+                        (widget.product.quantity ?? 0) > 0
+                            ? Colors.green
+                            : Colors.red,
                   ),
                 ),
               ],
@@ -382,10 +385,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ),
 
                   // 🛒 Add to Cart Button
-                  
+
+                  // 🛒 Add to Cart Button
                   ElevatedButton(
                     onPressed:
-                        widget.product.inStock
+                        (widget.product.quantity ?? 0) > 0
                             ? () async {
                               // 🚫 Prevent guest from adding to cart
                               if (widget.isGuest) {
@@ -399,15 +403,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 return;
                               }
 
-                              // Add to cart by checking id, size, color
+                              // Add to cart
                               await FirestoreService.addOrUpdateCart(
                                 widget.product,
                                 size: selectedSize,
                                 color: selectedColor,
                               );
-
-                              // Update local button state
-                              if (mounted) setState(() => isInCart = true);
 
                               // Show success message
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -418,10 +419,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 ),
                               );
                             }
-                            : null,
+                            : null, // Disable if out of stock
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
-                          isInCart ? Colors.green : Colors.deepOrange,
+                          (widget.product.quantity ?? 0) > 0
+                              ? Colors.deepOrange
+                              : Colors.grey,
                       padding: EdgeInsets.symmetric(
                         horizontal: horizontalSpace(50),
                         vertical: verticalSpace(16),
@@ -435,8 +438,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       elevation: 5,
                     ),
                     child: Text(
-                      widget.product.inStock
-                          ? (isInCart ? "In Cart" : "Add to Cart")
+                      (widget.product.quantity ?? 0) > 0
+                          ? "Add to Cart"
                           : "Out of Stock",
                       style: GoogleFonts.poppins(
                         fontSize: fontSize(16),

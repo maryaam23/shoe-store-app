@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shoe_store_app/User_Pages/product_page.dart';
+import 'package:shoe_store_app/firestore_service.dart';
 import 'checkout_page.dart';
 
 class CartPage extends StatefulWidget {
@@ -14,13 +16,71 @@ class CartPage extends StatefulWidget {
 class _CartPageState extends State<CartPage> {
   final user = FirebaseAuth.instance.currentUser;
 
-  void _increaseQty(String cartId, int currentQty) {
-    FirebaseFirestore.instance
-        .collection("users")
-        .doc(user!.uid)
-        .collection("cart")
-        .doc(cartId)
-        .update({"quantity": currentQty + 1});
+  void _increaseQty(String cartId, int currentQty, String productId) async {
+    final userId = user!.uid;
+
+    print("---- INCREASE QTY DEBUG ----");
+    print("CartId: $cartId, ProductId: $productId, CurrentQty: $currentQty");
+
+    // Step 1: Get total quantity of this product in user's cart
+    final cartSnapshot =
+        await FirebaseFirestore.instance
+            .collection("users")
+            .doc(userId)
+            .collection("cart")
+            .where("id", isEqualTo: productId)
+            .get();
+
+    int totalProductQtyInCart = 0;
+    for (var doc in cartSnapshot.docs) {
+      int qty = ((doc["quantity"] ?? 0) as num).toInt();
+      totalProductQtyInCart += qty;
+      print(
+        "Cart DocId: ${doc.id}, Qty in Cart: $qty, Running Total: $totalProductQtyInCart",
+      );
+    }
+
+    print("Total quantity in cart for this product: $totalProductQtyInCart");
+
+    // Step 2: Get product stock from Nproducts
+    final productDoc =
+        await FirebaseFirestore.instance
+            .collection("Nproducts")
+            .doc(productId)
+            .get();
+
+    if (!productDoc.exists) {
+      print("Product $productId does not exist in Nproducts!");
+      return;
+    }
+
+    final availableStock = ((productDoc["quantity"] ?? 0) as num).toInt();
+    print("Available stock for product: $availableStock");
+
+    // Step 3: Check if adding exceeds stock
+    if (totalProductQtyInCart < availableStock) {
+      print("Can increase quantity. Updating cart...");
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(userId)
+          .collection("cart")
+          .doc(cartId)
+          .update({"quantity": currentQty + 1});
+      print("Quantity updated successfully.");
+    } else {
+      print(
+        "Cannot increase quantity. Total in cart ($totalProductQtyInCart) >= Stock ($availableStock)",
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Not enough stock available for this product."),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+
+    print("------------------------------");
   }
 
   void _decreaseQty(String cartId, int currentQty) {
@@ -140,7 +200,8 @@ class _CartPageState extends State<CartPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body:
-          user == null // to check if its guest 
+          user ==
+                  null // to check if its guest
               ? const Center(
                 child: Text(
                   "Please log in to view your cart.",
@@ -187,12 +248,12 @@ class _CartPageState extends State<CartPage> {
                             final productId = cartItem['id'];
 
                             // Fetch product document to get all sizes/colors
-                            return FutureBuilder<DocumentSnapshot>(
-                              future:
+                            return StreamBuilder<DocumentSnapshot>(
+                              stream:
                                   FirebaseFirestore.instance
                                       .collection('Nproducts')
                                       .doc(productId)
-                                      .get(),
+                                      .snapshots(),
                               builder: (context, productSnapshot) {
                                 if (!productSnapshot.hasData) {
                                   return const Center(
@@ -208,214 +269,334 @@ class _CartPageState extends State<CartPage> {
                                   productData['colors'] ?? [],
                                 );
 
+                                final availableStock =
+                                    productData['quantity'] ?? 0;
+                                final cartQty = cartItem['quantity'];
+                                final isOutOfStock = availableStock == 0;
+                                final atMaxStock = cartQty >= availableStock;
+
                                 return Container(
                                   padding: EdgeInsets.symmetric(
                                     horizontal: w * 0.01,
                                     vertical: h * 0.015,
                                   ),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border(
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isOutOfStock
+                                            ? Colors.grey.shade200
+                                            : Colors.white,
+                                    border: const Border(
                                       bottom: BorderSide(
                                         color: Color(0xFFE7EDF4),
                                         width: 1,
                                       ),
                                     ),
                                   ),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                                  child: Column(
                                     children: [
-                                      // Product image
-                                      Card(
-                                        elevation: 2,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            w * 0.02,
-                                          ),
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            w * 0.02,
-                                          ),
-                                          child:
-                                              (cartItem
-                                                          .data()
-                                                          .toString()
-                                                          .contains("image") &&
-                                                      cartItem["image"] != null)
-                                                  ? Image.network(
-                                                    cartItem["image"],
-                                                    width: w * 0.22,
-                                                    height: w * 0.22,
-                                                    fit: BoxFit.cover,
-                                                  )
-                                                  : Icon(
-                                                    Icons.image,
-                                                    size: w * 0.18,
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          // Product image
+                                          Card(
+                                            elevation: 2,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    w * 0.02,
                                                   ),
-                                        ),
-                                      ),
-                                      SizedBox(width: w * 0.01),
-
-                                      // Product info + Quantity
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              cartItem["name"],
-                                              style: GoogleFonts.inter(
-                                                fontSize: 16 * textScale,
-                                                fontWeight: FontWeight.w600,
-                                                color: const Color(0xFF0D141C),
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            SizedBox(height: h * 0.004),
-                                            Text(
-                                              "₪${cartItem["price"]}",
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14 * textScale,
-                                                color: const Color(0xFF49709C),
-                                              ),
-                                            ),
-
-                                            // Size selection
-                                            GestureDetector(
-                                              onTap:
-                                                  () => _selectSize(
-                                                    cartId,
-                                                    sizes,
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    w * 0.02,
                                                   ),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 4,
-                                                    ),
-                                                child: Text(
-                                                  "Size: ${cartItem["size"]}",
+                                              child:
+                                                  (cartItem
+                                                              .data()
+                                                              .toString()
+                                                              .contains(
+                                                                "image",
+                                                              ) &&
+                                                          cartItem["image"] !=
+                                                              null)
+                                                      ? Image.network(
+                                                        cartItem["image"],
+                                                        width: w * 0.22,
+                                                        height: w * 0.22,
+                                                        fit: BoxFit.cover,
+                                                        color:
+                                                            isOutOfStock
+                                                                ? Colors.black12
+                                                                : null,
+                                                        colorBlendMode:
+                                                            isOutOfStock
+                                                                ? BlendMode
+                                                                    .darken
+                                                                : null,
+                                                      )
+                                                      : Icon(
+                                                        Icons.image,
+                                                        size: w * 0.18,
+                                                      ),
+                                            ),
+                                          ),
+                                          SizedBox(width: w * 0.01),
+
+                                          // Product info
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  cartItem["name"],
                                                   style: GoogleFonts.inter(
-                                                    fontSize: 13 * textScale,
-                                                    color: Colors.black87,
-                                                    decoration:
-                                                        TextDecoration
-                                                            .underline,
+                                                    fontSize: 16 * textScale,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: const Color(
+                                                      0xFF0D141C,
+                                                    ),
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                SizedBox(height: h * 0.004),
+                                                Text(
+                                                  "₪${cartItem["price"]}",
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14 * textScale,
+                                                    color: const Color(
+                                                      0xFF49709C,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ),
 
-                                            // Color selection
-                                            GestureDetector(
-                                              onTap:
-                                                  () => _selectColor(
-                                                    cartId,
-                                                    colors,
-                                                  ),
-                                              child: Row(
-                                                children: [
-                                                  Text(
-                                                    "Color: ",
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 13 * textScale,
-                                                      color: Colors.black87,
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    width: 16,
-                                                    height: 16,
-                                                    decoration: BoxDecoration(
-                                                      color: Color(
-                                                        cartItem["color"],
+                                                // Size
+                                                GestureDetector(
+                                                  onTap:
+                                                      () => _selectSize(
+                                                        cartId,
+                                                        sizes,
                                                       ),
-                                                      shape: BoxShape.circle,
-                                                      border: Border.all(
-                                                        color:
-                                                            Colors
-                                                                .grey
-                                                                .shade400,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-
-                                            // Quantity controls + Delete
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    IconButton(
-                                                      padding: EdgeInsets.zero,
-                                                      constraints:
-                                                          const BoxConstraints(
-                                                            minWidth: 0,
-                                                            minHeight: 0,
-                                                          ),
-                                                      icon: const Icon(
-                                                        Icons.remove,
-                                                      ),
-                                                      onPressed:
-                                                          () => _decreaseQty(
-                                                            cartId,
-                                                            cartItem["quantity"],
-                                                          ),
-                                                    ),
-                                                    Text(
-                                                      "${cartItem["quantity"]}",
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          vertical: 4,
+                                                        ),
+                                                    child: Text(
+                                                      "Size: ${cartItem["size"]}",
                                                       style: GoogleFonts.inter(
                                                         fontSize:
-                                                            15 * textScale,
-                                                        fontWeight:
-                                                            FontWeight.w500,
+                                                            13 * textScale,
+                                                        color: Colors.black87,
+                                                        decoration:
+                                                            TextDecoration
+                                                                .underline,
                                                       ),
                                                     ),
-                                                    IconButton(
-                                                      padding: EdgeInsets.zero,
-                                                      constraints:
-                                                          const BoxConstraints(
-                                                            minWidth: 0,
-                                                            minHeight: 0,
+                                                  ),
+                                                ),
+
+                                                // Color
+                                                GestureDetector(
+                                                  onTap:
+                                                      () => _selectColor(
+                                                        cartId,
+                                                        colors,
+                                                      ),
+                                                  child: Row(
+                                                    children: [
+                                                      Text(
+                                                        "Color: ",
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize:
+                                                                  13 *
+                                                                  textScale,
+                                                              color:
+                                                                  Colors
+                                                                      .black87,
+                                                            ),
+                                                      ),
+                                                      Container(
+                                                        width: 16,
+                                                        height: 16,
+                                                        decoration: BoxDecoration(
+                                                          color: Color(
+                                                            cartItem["color"],
                                                           ),
+                                                          shape:
+                                                              BoxShape.circle,
+                                                          border: Border.all(
+                                                            color:
+                                                                Colors
+                                                                    .grey
+                                                                    .shade400,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+
+                                                // Quantity controls
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                            Icons.remove,
+                                                          ),
+                                                          onPressed:
+                                                              isOutOfStock
+                                                                  ? null
+                                                                  : () =>
+                                                                      _decreaseQty(
+                                                                        cartId,
+                                                                        cartQty,
+                                                                      ),
+                                                        ),
+                                                        Text(
+                                                          "$cartQty",
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize:
+                                                                    15 *
+                                                                    textScale,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                        ),
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                            Icons.add,
+                                                          ),
+                                                          color:
+                                                              atMaxStock
+                                                                  ? Colors.grey
+                                                                  : Colors
+                                                                      .black,
+                                                          onPressed:
+                                                              (!isOutOfStock)
+                                                                  ? () =>
+                                                                      _increaseQty(
+                                                                        cartId,
+                                                                        cartQty,
+                                                                        productId,
+                                                                      )
+                                                                  : null,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    IconButton(
                                                       icon: const Icon(
-                                                        Icons.add,
+                                                        Icons.delete,
+                                                        color: Colors.red,
                                                       ),
                                                       onPressed:
-                                                          () => _increaseQty(
+                                                          () => _removeFromCart(
                                                             cartId,
-                                                            cartItem["quantity"],
                                                           ),
                                                     ),
                                                   ],
                                                 ),
-                                                IconButton(
-                                                  padding: EdgeInsets.zero,
-                                                  constraints:
-                                                      const BoxConstraints(
-                                                        minWidth: 0,
-                                                        minHeight: 0,
-                                                      ),
-                                                  icon: Icon(
-                                                    Icons.delete,
-                                                    color: Colors.red,
-                                                    size: 18 * textScale,
-                                                  ),
-                                                  onPressed:
-                                                      () => _removeFromCart(
-                                                        cartId,
-                                                      ),
-                                                ),
                                               ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      // 🧩 If out of stock → show small gray message + actions
+                                      if (isOutOfStock) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          "This product is out of stock.",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13 * textScale,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            TextButton(
+                                              onPressed: () async {
+                                                final productId =
+                                                    cartItem["id"];
+
+                                                // Check if already in wishlist
+                                                final alreadyInWishlist =
+                                                    await FirestoreService.isInWishlist(
+                                                      productId,
+                                                    );
+
+                                                if (alreadyInWishlist) {
+                                                  // 🔴 Already there
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        "Already in wishlist",
+                                                      ),
+                                                      duration: Duration(
+                                                        seconds: 1,
+                                                      ),
+                                                    ),
+                                                  );
+                                                } else {
+                                                  // 🟢 Add to wishlist
+                                                  final product = Product(
+                                                    id: cartItem["id"],
+                                                    name: cartItem["name"],
+                                                    price:
+                                                        cartItem["price"]
+                                                            .toDouble(),
+                                                    image: cartItem["image"],
+                                                    category:
+                                                        '', // Optional: fill if available
+                                                    brand:
+                                                        '', // Optional: fill if available
+                                                  );
+
+                                                  await FirestoreService.addToWishlist(
+                                                    product,
+                                                  );
+
+                                                  // Optional: Remove from cart after moving
+                                                  await FirestoreService.removeFromCart(
+                                                    productId,
+                                                  );
+
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        "Moved to wishlist",
+                                                      ),
+                                                      duration: Duration(
+                                                        seconds: 1,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                              child: const Text(
+                                                "Move to Wishlist",
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      ),
+                                      ],
                                     ],
                                   ),
                                 );
@@ -451,14 +632,131 @@ class _CartPageState extends State<CartPage> {
                                     ),
                                   ),
                                 ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const CheckoutPage(),
-                                    ),
-                                  );
+                                onPressed: () async {
+                                  final snapshot =
+                                      await FirebaseFirestore.instance
+                                          .collection("users")
+                                          .doc(user!.uid)
+                                          .collection("cart")
+                                          .get();
+
+                                  final cartDocs = snapshot.docs;
+
+                                  bool hasProblem = false;
+                                  List<String> problemMessages = [];
+                                  Set<String> processedProductIds =
+                                      {}; // Track already checked products
+
+                                  for (var doc in cartDocs) {
+                                    final productId = doc["id"];
+
+                                    if (processedProductIds.contains(productId))
+                                      continue; // Skip duplicates
+                                    processedProductIds.add(productId);
+
+                                    final productSnap =
+                                        await FirebaseFirestore.instance
+                                            .collection("Nproducts")
+                                            .doc(productId)
+                                            .get();
+
+                                    if (!productSnap.exists) continue;
+
+                                    String productName =
+                                        productSnap["name"] ?? "Product";
+                                    int stock =
+                                        ((productSnap["quantity"] ?? 0) as num)
+                                            .toInt();
+
+                                    // Total quantity of this product in cart
+                                    final cartSnapshot =
+                                        await FirebaseFirestore.instance
+                                            .collection("users")
+                                            .doc(user!.uid)
+                                            .collection("cart")
+                                            .where("id", isEqualTo: productId)
+                                            .get();
+
+                                    int totalQtyInCart = 0;
+                                    for (var cartDoc in cartSnapshot.docs) {
+                                      totalQtyInCart +=
+                                          ((cartDoc["quantity"] ?? 0) as num)
+                                              .toInt();
+                                    }
+
+                                    if (stock == 0) {
+                                      hasProblem = true;
+                                      problemMessages.add(
+                                        "$productName is out of stock. Please remove it or move it to your wishlist.",
+                                      );
+                                    } else if (totalQtyInCart > stock) {
+                                      hasProblem = true;
+                                      int exceedQty = totalQtyInCart - stock;
+                                      problemMessages.add(
+                                        "$productName quantity exceeds stock by $exceedQty. Available: $stock, In Cart: $totalQtyInCart.",
+                                      );
+                                    }
+                                  }
+
+                                  if (hasProblem) {
+                                    final maxHeight =
+                                        MediaQuery.of(context).size.height *
+                                        0.5;
+
+                                    showDialog(
+                                      context: context,
+                                      builder:
+                                          (_) => AlertDialog(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            title: const Text(
+                                              "Can't Proceed to Checkout 🛑",
+                                            ),
+                                            content: ConstrainedBox(
+                                              constraints: BoxConstraints(
+                                                maxHeight: maxHeight,
+                                              ),
+                                              child: SingleChildScrollView(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children:
+                                                      problemMessages
+                                                          .map(
+                                                            (msg) => Padding(
+                                                              padding:
+                                                                  const EdgeInsets.only(
+                                                                    bottom: 8.0,
+                                                                  ),
+                                                              child: Text(msg),
+                                                            ),
+                                                          )
+                                                          .toList(),
+                                                ),
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed:
+                                                    () =>
+                                                        Navigator.pop(context),
+                                                child: const Text("OK"),
+                                              ),
+                                            ],
+                                          ),
+                                    );
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const CheckoutPage(),
+                                      ),
+                                    );
+                                  }
                                 },
+
                                 child: Text(
                                   "Checkout",
                                   style: GoogleFonts.inter(

@@ -41,6 +41,46 @@ class _ProfilePageState extends State<ProfilePage> {
 
   dynamic selectedPayment;
 
+  final List<Map<String, dynamic>> payments = [
+    {"label": "Credit Card", "value": "Credit Card", "icon": Icons.credit_card},
+    {
+      "label": "Cash on Delivery",
+      "value": "Cash on Delivery",
+      "icon": Icons.money,
+    },
+    {
+      "label": "PayPal",
+      "value": "PayPal",
+      "icon": Icons.account_balance_wallet,
+    },
+    {"label": "Apple Pay", "value": "Apple Pay", "icon": Icons.apple},
+  ];
+
+  bool _requiresPaymentDetails(String? value) {
+    return value == "Credit Card";
+  }
+
+  bool _isValidCardNumber(String number) {
+    return number.replaceAll(" ", "").length >= 16; // simple check
+  }
+
+  bool _isValidExpiry(String expiry) {
+    if (!expiry.contains("/")) return false;
+    final parts = expiry.split("/");
+    if (parts.length != 2) return false;
+    final month = int.tryParse(parts[0]) ?? 0;
+    final year = int.tryParse(parts[1]) ?? 0;
+    return month >= 1 && month <= 12 && year >= 23; // simple future year check
+  }
+
+  bool _isValidCVV(String cvv) => cvv.length == 3;
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1067,8 +1107,6 @@ class _ProfilePageState extends State<ProfilePage> {
     double h,
   ) async {
     final userDoc = FirebaseFirestore.instance.collection("users").doc(uid);
-
-    // Get current user data
     DocumentSnapshot snapshot = await userDoc.get();
     Map<String, dynamic>? data = snapshot.data() as Map<String, dynamic>?;
 
@@ -1089,137 +1127,147 @@ class _ProfilePageState extends State<ProfilePage> {
       text: currentMethod is Map ? currentMethod["cvv"] : "",
     );
 
+    final List<Map<String, dynamic>> payments = [
+      {
+        "label": "Credit Card",
+        "value": "Credit Card",
+        "icon": Icons.credit_card,
+      },
+      {
+        "label": "Cash on Delivery",
+        "value": "Cash on Delivery",
+        "icon": Icons.money,
+      },
+      {
+        "label": "PayPal",
+        "value": "PayPal",
+        "icon": Icons.account_balance_wallet,
+      },
+      {"label": "Apple Pay", "value": "Apple Pay", "icon": Icons.apple},
+    ];
+
     dynamic result = await showDialog(
       context: context,
+      barrierDismissible: false,
       builder:
           (context) => StatefulBuilder(
             builder: (context, setState) {
               return AlertDialog(
-                title: Text(
-                  "Select Payment Method",
-                  style: GoogleFonts.merriweather(
-                    fontSize: w * 0.05,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                backgroundColor: const Color(0xFFF8F5FB),
+                titlePadding: EdgeInsets.only(top: h * 0.03, bottom: h * 0.015),
+                title: Center(
+                  child: Text(
+                    "Select Payment Method",
+                    style: GoogleFonts.merriweather(
+                      fontSize: w * 0.05,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      RadioListTile<String>(
-                        value: "Cash on Delivery",
-                        groupValue: selectedMethod,
-                        title: Text(
-                          "Cash on Delivery",
-                          style: GoogleFonts.merriweather(
-                            fontSize: w * 0.045,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        onChanged:
-                            (val) => setState(() => selectedMethod = val),
-                      ),
-                      RadioListTile<String>(
-                        value: "Visa",
-                        groupValue: selectedMethod,
-                        title: Text(
-                          "Visa",
-                          style: GoogleFonts.merriweather(
-                            fontSize: w * 0.045,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        onChanged:
-                            (val) => setState(() => selectedMethod = val),
-                      ),
-                      if (selectedMethod == "Visa")
-                        Column(
-                          children: [
-                            TextField(
-                              controller: nameCtrl,
-                              style: GoogleFonts.merriweather(
-                                fontSize: w * 0.045,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black87,
-                              ),
-                              decoration: InputDecoration(
-                                labelText: "Card holder full name",
-                                labelStyle: GoogleFonts.merriweather(
-                                  fontSize: w * 0.045,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: h * 0.015),
-                            TextField(
-                              controller: cardNumberCtrl,
-                              keyboardType: TextInputType.number,
-                              style: GoogleFonts.merriweather(
-                                fontSize: w * 0.045,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black87,
-                              ),
-                              decoration: InputDecoration(
-                                labelText: "Card Number",
-                                labelStyle: GoogleFonts.merriweather(
-                                  fontSize: w * 0.045,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: h * 0.015),
-                            Row(
+                content: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: h * 0.9,
+                    maxWidth: w * 0.99,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children:
+                          payments.map((pm) {
+                            final showDetails = pm["value"] == "Credit Card";
+                            return Column(
                               children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: expiryCtrl,
-                                    style: GoogleFonts.merriweather(
-                                      fontSize: w * 0.045,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.black87,
-                                    ),
-                                    decoration: InputDecoration(
-                                      labelText: "Expiry Date",
-                                      hintText: "MM/YY",
-                                      labelStyle: GoogleFonts.merriweather(
-                                        fontSize: w * 0.045,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.black54,
+                                Container(
+                                  margin: EdgeInsets.symmetric(
+                                    vertical: h * 0.005,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: RadioListTile(
+                                    value: pm["value"],
+                                    groupValue: selectedMethod,
+                                    activeColor: Colors.deepPurple,
+                                    title: Text(
+                                      pm["label"],
+                                      style: GoogleFonts.inter(
+                                        fontSize: w * 0.04,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
                                       ),
                                     ),
-                                  ),
-                                ),
-                                SizedBox(width: w * 0.02),
-                                Expanded(
-                                  child: TextField(
-                                    controller: cvvCtrl,
-                                    style: GoogleFonts.merriweather(
-                                      fontSize: w * 0.045,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.black87,
-                                    ),
-                                    decoration: InputDecoration(
-                                      labelText: "CVV",
-                                      labelStyle: GoogleFonts.merriweather(
-                                        fontSize: w * 0.045,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.black54,
+                                    secondary: CircleAvatar(
+                                      backgroundColor: const Color(0xFFEDEBFF),
+                                      radius: w * 0.03,
+                                      child: Icon(
+                                        pm["icon"],
+                                        color: Colors.deepPurple,
+                                        size: w * 0.05,
                                       ),
                                     ),
+                                    onChanged:
+                                        (val) => setState(
+                                          () => selectedMethod = val,
+                                        ),
                                   ),
                                 ),
+                                if (selectedMethod == pm["value"] &&
+                                    showDetails)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.01,
+                                      vertical: h * 0.01,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        _buildTextField(
+                                          "Name on Card",
+                                          nameCtrl,
+                                          w,
+                                        ),
+                                        _buildTextField(
+                                          "Card Number",
+                                          cardNumberCtrl,
+                                          w,
+                                          keyboard: TextInputType.number,
+                                        ),
+                                        _buildTextField(
+                                          "Expiry (MM/YY)",
+                                          expiryCtrl,
+                                          w,
+                                        ),
+                                        _buildTextField(
+                                          "CVV",
+                                          cvvCtrl,
+                                          w,
+                                          keyboard: TextInputType.number,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                SizedBox(height: h * 0.01),
                               ],
-                            ),
-                          ],
-                        ),
-                    ],
+                            );
+                          }).toList(),
+                    ),
                   ),
                 ),
+                actionsPadding: EdgeInsets.symmetric(
+                  horizontal: w * 0.05,
+                  vertical: h * 0.02,
+                ),
+                actionsAlignment: MainAxisAlignment.spaceBetween,
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context, null),
@@ -1228,50 +1276,60 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: GoogleFonts.merriweather(
                         fontSize: w * 0.045,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: Colors.grey[700],
                       ),
                     ),
                   ),
                   ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: w * 0.07,
+                        vertical: h * 0.015,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
                     onPressed: () async {
                       if (selectedMethod == null) return;
+                      if (selectedMethod == "Credit Card") {
+                        if (nameCtrl.text.trim().isEmpty) {
+                          return _showError(
+                            "Please enter the cardholder name.",
+                          );
+                        }
+                        if (!_isValidCardNumber(cardNumberCtrl.text)) {
+                          return _showError("Invalid card number.");
+                        }
+                        if (!_isValidExpiry(expiryCtrl.text)) {
+                          return _showError("Invalid or expired date (MM/YY).");
+                        }
+                        if (!_isValidCVV(cvvCtrl.text)) {
+                          return _showError("Invalid CVV.");
+                        }
+                      }
 
                       dynamic newMethod;
-                      if (selectedMethod == "Cash on Delivery") {
-                        newMethod = "Cash on Delivery";
-                      } else {
-                        if (nameCtrl.text.isEmpty ||
-                            cardNumberCtrl.text.isEmpty ||
-                            expiryCtrl.text.isEmpty ||
-                            cvvCtrl.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Please fill all Visa details"),
-                            ),
-                          );
-                          return;
-                        }
+                      if (selectedMethod == "Credit Card") {
                         newMethod = {
-                          "type": "Visa",
+                          "type": "Credit Card",
                           "name": nameCtrl.text.trim(),
                           "cardNumber": cardNumberCtrl.text.trim(),
                           "expiry": expiryCtrl.text.trim(),
                           "cvv": cvvCtrl.text.trim(),
                         };
+                      } else {
+                        newMethod = selectedMethod;
                       }
 
                       try {
                         await userDoc.update({
                           "selectedPaymentMethod": newMethod,
                         });
-                        print("DEBUG: Payment method saved: $newMethod");
                         Navigator.pop(context, newMethod);
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Failed to save payment method"),
-                          ),
-                        );
+                        _showError("Failed to save payment method.");
                       }
                     },
                     child: Text(
@@ -1279,7 +1337,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: GoogleFonts.merriweather(
                         fontSize: w * 0.045,
                         fontWeight: FontWeight.w700,
-                        color: const Color.fromARGB(255, 0, 0, 0),
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -1290,6 +1348,41 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     return result;
+  }
+
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    double w, {
+    TextInputType keyboard = TextInputType.text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboard,
+        style: GoogleFonts.inter(
+          fontSize: w * 0.04,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(
+            fontSize: w * 0.04,
+            fontWeight: FontWeight.w500,
+            color: Colors.black54,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Colors.deepPurple),
+          ),
+        ),
+      ),
+    );
   }
 
   //--------------------------------------------------------------------------------------------------------------------------------

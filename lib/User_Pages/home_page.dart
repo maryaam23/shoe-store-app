@@ -426,6 +426,8 @@ class _HomePageState extends State<HomePage> {
                           //final product = products[index];
 
                           final product = filtered[index];
+                          final bool isOutOfStock = product.quantity == 0;
+
                           final isInCart = cartIds.contains(product.id);
                           final isInWishlist = wishlistIds.contains(product.id);
 
@@ -452,20 +454,66 @@ class _HomePageState extends State<HomePage> {
                                     borderRadius: BorderRadius.circular(
                                       w * 0.01,
                                     ),
-                                    child:
+                                    child: Stack(
+                                      children: [
                                         product.image.startsWith('http')
                                             ? Image.network(
                                               product.image,
                                               height: h * 0.2,
                                               width: double.infinity,
                                               fit: BoxFit.cover,
+                                              color:
+                                                  isOutOfStock
+                                                      ? Colors.black
+                                                          .withOpacity(0.4)
+                                                      : null,
+                                              colorBlendMode:
+                                                  isOutOfStock
+                                                      ? BlendMode.darken
+                                                      : BlendMode.srcIn,
                                             )
                                             : Image.asset(
                                               product.image,
                                               height: h * 0.2,
                                               width: double.infinity,
                                               fit: BoxFit.cover,
+                                              color:
+                                                  isOutOfStock
+                                                      ? Colors.black
+                                                          .withOpacity(0.4)
+                                                      : null,
+                                              colorBlendMode:
+                                                  isOutOfStock
+                                                      ? BlendMode.darken
+                                                      : BlendMode.srcIn,
                                             ),
+                                        if (isOutOfStock)
+                                          Positioned(
+                                            top: 8,
+                                            right: 8,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 3,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.redAccent
+                                                    .withOpacity(0.9),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                "Out of Stock",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                   SizedBox(height: h * 0.01),
                                   Padding(
@@ -523,6 +571,23 @@ class _HomePageState extends State<HomePage> {
                                             ),
                                             //Mariam edit
                                             onPressed: () async {
+                                              // 🚫 Prevent adding if out of stock
+                                              if (isOutOfStock) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      "This product is currently out of stock.",
+                                                    ),
+                                                    backgroundColor: Colors.red,
+                                                    duration: Duration(
+                                                      seconds: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
                                               // 🚫 Prevent guest from adding to cart
                                               if (widget.isGuest) {
                                                 ScaffoldMessenger.of(
