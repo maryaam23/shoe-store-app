@@ -56,12 +56,12 @@ class _LoginPageState extends State<LoginPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        automaticallyImplyLeading: widget.fromProfile, // ✅ Add this line
         leading:
             widget.fromProfile
                 ? IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
                   onPressed: () {
-                    // Go back to HomePage as guest
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(

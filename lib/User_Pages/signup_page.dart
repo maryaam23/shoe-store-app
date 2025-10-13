@@ -635,7 +635,7 @@ class _SignupPageState extends State<SignupPage> {
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => const LoginPage(),
+                                        builder: (_) => const LoginPage(fromProfile: false),
                                       ),
                                     );
                                   }
@@ -681,7 +681,7 @@ class _SignupPageState extends State<SignupPage> {
                               () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const LoginPage(),
+                                  builder: (_) => const LoginPage(fromProfile: false),
                                 ),
                               ),
                           child: RichText(

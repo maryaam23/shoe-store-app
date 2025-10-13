@@ -74,6 +74,7 @@ class _HomePageState extends State<HomePage> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           elevation: 0,
           backgroundColor: Colors.grey[50],
           centerTitle: true,
@@ -88,98 +89,106 @@ class _HomePageState extends State<HomePage> {
           actions:
               _selectedIndex == 0
                   ? [
-                    StreamBuilder<List<Map<String, dynamic>>>(
-                      stream: CombineLatestStream.combine2<
-                        QuerySnapshot,
-                        QuerySnapshot,
-                        List<Map<String, dynamic>>
-                      >(
-                        FirebaseFirestore.instance
-                            .collection("UserNotification")
-                            .where("isRead", isEqualTo: false)
-                            .snapshots(),
-                        FirebaseFirestore.instance
-                            .collection("users")
-                            .doc(FirebaseAuth.instance.currentUser!.uid)
-                            .collection("notification")
-                            .where("isRead", isEqualTo: false)
-                            .snapshots(),
-                        (generalSnap, userSnap) {
-                          // Combine both collections into a single list
-                          List<Map<String, dynamic>> allDocs = [
-                            ...generalSnap.docs.map(
-                              (d) => {'doc': d, 'isUser': false},
-                            ),
-                            ...userSnap.docs.map(
-                              (d) => {'doc': d, 'isUser': true},
-                            ),
-                          ];
-                          return allDocs;
-                        },
-                      ),
-                      builder: (context, snapshot) {
-                        int unreadCount =
-                            snapshot.hasData ? snapshot.data!.length : 0;
-
-                        return Stack(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.notifications,
-                                color: Colors.black,
-                                size: w * 0.07,
+                    if (!widget
+                        .isGuest) // ✅ Only show notifications if not guest
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: CombineLatestStream.combine2<
+                          QuerySnapshot,
+                          QuerySnapshot,
+                          List<Map<String, dynamic>>
+                        >(
+                          FirebaseFirestore.instance
+                              .collection("UserNotification")
+                              .where("isRead", isEqualTo: false)
+                              .snapshots(),
+                          FirebaseFirestore.instance
+                              .collection("users")
+                              .doc(FirebaseAuth.instance.currentUser!.uid)
+                              .collection("notification")
+                              .where("isRead", isEqualTo: false)
+                              .snapshots(),
+                          (generalSnap, userSnap) {
+                            List<Map<String, dynamic>> allDocs = [
+                              ...generalSnap.docs.map(
+                                (d) => {'doc': d, 'isUser': false},
                               ),
-                              onPressed: () {
-                                final user = FirebaseAuth.instance.currentUser;
-                                if (user != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => NotificationScreen(
-                                            userId: user.uid,
-                                          ),
+                              ...userSnap.docs.map(
+                                (d) => {'doc': d, 'isUser': true},
+                              ),
+                            ];
+                            return allDocs;
+                          },
+                        ),
+                        builder: (context, snapshot) {
+                          int unreadCount =
+                              snapshot.hasData ? snapshot.data!.length : 0;
+
+                          return Stack(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  Icons.notifications,
+                                  color: Colors.black,
+                                  size:
+                                      MediaQuery.of(context).size.width * 0.07,
+                                ),
+                                onPressed: () {
+                                  if (widget.isGuest) {
+                                    // 👈 Guest should login first
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Please log in to view notifications.",
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    final user =
+                                        FirebaseAuth.instance.currentUser;
+                                    if (user != null) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => NotificationScreen(
+                                                userId: user.uid,
+                                              ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
                                     ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Please log in first"),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                            if (unreadCount > 0)
-                              Positioned(
-                                right: 8,
-                                top: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    unreadCount.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                    child: Text(
+                                      unreadCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
+                            ],
+                          );
+                        },
+                      ),
 
                     IconButton(
                       icon: Icon(
                         Icons.menu,
                         color: Colors.black,
-                        size: w * 0.07,
+                        size: MediaQuery.of(context).size.width * 0.07,
                       ),
                       onPressed: () {
                         Navigator.push(
@@ -919,60 +928,64 @@ class _HomePageState extends State<HomePage> {
                                           },
                                         ),
 
-                                        SizedBox(width: w * 0.04),
+                                        SizedBox(width: w * 0.02),
 
+                                        // Wishlist button
+                                        // Wishlist button
                                         const Spacer(), // 👈 pushes the next widget (wishlist) to the right
+                                        // Wishlist button
+                                        // Wishlist button
+                                        Expanded(
+                                          flex: 1,
+                                          child: IconButton(
+                                            iconSize: w * 0.06,
+                                            icon: Icon(
+                                              isInWishlist
+                                                  ? Icons.favorite
+                                                  : Icons
+                                                      .favorite_border, // 👈 Border when false
+                                              color:
+                                                  isInWishlist
+                                                      ? const Color.fromARGB(
+                                                        255,
+                                                        255,
+                                                        17,
+                                                        0,
+                                                      )
+                                                      : Colors
+                                                          .black, // 👈 Red when pressed
+                                            ),
+                                            onPressed: () async {
+                                              // 🚫 Prevent guest from adding to wishlist
+                                              if (widget.isGuest) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      "Please login first",
+                                                    ),
+                                                    backgroundColor: Colors.red,
+                                                    duration: Duration(
+                                                      seconds: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
 
-                                        // Wishlist button
-                                        // Wishlist button
-                                        IconButton(
-                                          iconSize: w * 0.065,
-                                          icon: Icon(
-                                            isInWishlist
-                                                ? Icons.favorite
-                                                : Icons
-                                                    .favorite_border, // 👈 Border when false
-                                            color:
-                                                isInWishlist
-                                                    ? const Color.fromARGB(
-                                                      255,
-                                                      255,
-                                                      17,
-                                                      0,
-                                                    )
-                                                    : Colors
-                                                        .black, // 👈 Red when pressed
+                                              // ❤️ Toggle wishlist state
+                                              if (isInWishlist) {
+                                                await FirestoreService.removeFromWishlist(
+                                                  product.id,
+                                                );
+                                              } else {
+                                                await FirestoreService.addToWishlist(
+                                                  product,
+                                                );
+                                              }
+                                            },
                                           ),
-                                          onPressed: () async {
-                                            // 🚫 Prevent guest from adding to wishlist
-                                            if (widget.isGuest) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    "Please login first",
-                                                  ),
-                                                  backgroundColor: Colors.red,
-                                                  duration: Duration(
-                                                    seconds: 2,
-                                                  ),
-                                                ),
-                                              );
-                                              return;
-                                            }
-
-                                            // ❤️ Toggle wishlist state
-                                            if (isInWishlist) {
-                                              await FirestoreService.removeFromWishlist(
-                                                product.id,
-                                              );
-                                            } else {
-                                              await FirestoreService.addToWishlist(
-                                                product,
-                                              );
-                                            }
-                                          },
                                         ),
                                       ],
                                     ),
