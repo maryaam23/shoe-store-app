@@ -88,98 +88,106 @@ class _HomePageState extends State<HomePage> {
           actions:
               _selectedIndex == 0
                   ? [
-                    StreamBuilder<List<Map<String, dynamic>>>(
-                      stream: CombineLatestStream.combine2<
-                        QuerySnapshot,
-                        QuerySnapshot,
-                        List<Map<String, dynamic>>
-                      >(
-                        FirebaseFirestore.instance
-                            .collection("UserNotification")
-                            .where("isRead", isEqualTo: false)
-                            .snapshots(),
-                        FirebaseFirestore.instance
-                            .collection("users")
-                            .doc(FirebaseAuth.instance.currentUser!.uid)
-                            .collection("notification")
-                            .where("isRead", isEqualTo: false)
-                            .snapshots(),
-                        (generalSnap, userSnap) {
-                          // Combine both collections into a single list
-                          List<Map<String, dynamic>> allDocs = [
-                            ...generalSnap.docs.map(
-                              (d) => {'doc': d, 'isUser': false},
-                            ),
-                            ...userSnap.docs.map(
-                              (d) => {'doc': d, 'isUser': true},
-                            ),
-                          ];
-                          return allDocs;
-                        },
-                      ),
-                      builder: (context, snapshot) {
-                        int unreadCount =
-                            snapshot.hasData ? snapshot.data!.length : 0;
-
-                        return Stack(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.notifications,
-                                color: Colors.black,
-                                size: w * 0.07,
+                    if (!widget
+                        .isGuest) // ✅ Only show notifications if not guest
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: CombineLatestStream.combine2<
+                          QuerySnapshot,
+                          QuerySnapshot,
+                          List<Map<String, dynamic>>
+                        >(
+                          FirebaseFirestore.instance
+                              .collection("UserNotification")
+                              .where("isRead", isEqualTo: false)
+                              .snapshots(),
+                          FirebaseFirestore.instance
+                              .collection("users")
+                              .doc(FirebaseAuth.instance.currentUser!.uid)
+                              .collection("notification")
+                              .where("isRead", isEqualTo: false)
+                              .snapshots(),
+                          (generalSnap, userSnap) {
+                            List<Map<String, dynamic>> allDocs = [
+                              ...generalSnap.docs.map(
+                                (d) => {'doc': d, 'isUser': false},
                               ),
-                              onPressed: () {
-                                final user = FirebaseAuth.instance.currentUser;
-                                if (user != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => NotificationScreen(
-                                            userId: user.uid,
-                                          ),
+                              ...userSnap.docs.map(
+                                (d) => {'doc': d, 'isUser': true},
+                              ),
+                            ];
+                            return allDocs;
+                          },
+                        ),
+                        builder: (context, snapshot) {
+                          int unreadCount =
+                              snapshot.hasData ? snapshot.data!.length : 0;
+
+                          return Stack(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  Icons.notifications,
+                                  color: Colors.black,
+                                  size:
+                                      MediaQuery.of(context).size.width * 0.07,
+                                ),
+                                onPressed: () {
+                                  if (widget.isGuest) {
+                                    // 👈 Guest should login first
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Please log in to view notifications.",
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    final user =
+                                        FirebaseAuth.instance.currentUser;
+                                    if (user != null) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => NotificationScreen(
+                                                userId: user.uid,
+                                              ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
                                     ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Please log in first"),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                            if (unreadCount > 0)
-                              Positioned(
-                                right: 8,
-                                top: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    unreadCount.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                    child: Text(
+                                      unreadCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
+                            ],
+                          );
+                        },
+                      ),
 
                     IconButton(
                       icon: Icon(
                         Icons.menu,
                         color: Colors.black,
-                        size: w * 0.07,
+                        size: MediaQuery.of(context).size.width * 0.07,
                       ),
                       onPressed: () {
                         Navigator.push(
