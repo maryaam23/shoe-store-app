@@ -10,11 +10,9 @@ late final FirebaseFirestore firestore; // Make it globally accessible
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-   // Use the default Firestore database
+  // Use the default Firestore database
   firestore = FirebaseFirestore.instance;
 
   runApp(const MyApp());
@@ -33,6 +31,4 @@ class MyApp extends StatelessWidget {
       home: const LogoScreen(),
     );
   }
-
-
 }

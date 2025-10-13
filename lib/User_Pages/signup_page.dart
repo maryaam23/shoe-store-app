@@ -682,7 +682,7 @@ class _SignupPageState extends State<SignupPage> {
                               () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const LoginPage(),
+                                  builder: (_) => const LoginPage(fromProfile: false),
                                 ),
                               ),
                           child: RichText(
@@ -709,7 +709,7 @@ class _SignupPageState extends State<SignupPage> {
                                             MaterialPageRoute(
                                               builder:
                                                   (context) =>
-                                                      const LoginPage(), // your Sign In page
+                                                      const LoginPage(fromProfile: false), // your Sign In page
                                             ),
                                           );
                                         },
