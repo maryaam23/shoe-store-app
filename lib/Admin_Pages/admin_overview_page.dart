@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shoe_store_app/Admin_Pages/orders_mangment_page.dart';
 import 'package:shoe_store_app/Admin_Pages/product_mangment_page.dart';
@@ -333,10 +334,12 @@ class AdminOverviewScreenBody extends StatelessWidget {
 
               // LOGOUT BUTTON
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut(); // 👈 actually sign out
+
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (context) => LoginPage()),
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
                     (route) => false,
                   );
                 },

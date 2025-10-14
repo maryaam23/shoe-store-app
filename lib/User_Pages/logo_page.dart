@@ -1,6 +1,7 @@
 import 'dart:async'; // To use Timer (delays & scheduled tasks)
 import 'package:flutter/material.dart'; // Core Flutter UI toolkit
 import 'package:google_fonts/google_fonts.dart'; // To use Google Fonts
+import 'package:shoe_store_app/role_wrapper.dart';
 import 'login_page.dart'; // Navigate to login screen after splash
 
 // A StatefulWidget allows us to rebuild the UI when state/animations change
@@ -105,7 +106,7 @@ class _LogoScreenState extends State<LogoScreen> with TickerProviderStateMixin {
            Timer(const Duration(seconds: 3), () {
              Navigator.pushReplacement(
                context,
-               MaterialPageRoute(builder: (context) => const LoginPage()),
+               MaterialPageRoute(builder: (_) => const RoleWrapper()),
              );
            });
         });
