@@ -344,7 +344,15 @@ class _HomePageState extends State<HomePage> {
 
           // Firestore Products
           StreamBuilder<QuerySnapshot>(
-            stream: firestore.collection('Nproducts').snapshots(),
+            stream:
+                FirebaseFirestore.instance
+                    .collection('Nproducts')
+                    .where(
+                      'visible',
+                      isEqualTo: true,
+                    ) // ✅ Show only visible products
+                    
+                    .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());

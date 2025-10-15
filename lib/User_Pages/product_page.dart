@@ -143,7 +143,14 @@ class _ProductPageState extends State<ProductPage> {
         backgroundColor: Colors.deepOrange,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestore.collection('Nproducts').snapshots(),
+        stream:
+            FirebaseFirestore.instance
+                .collection('Nproducts')
+                .where(
+                  'visible',
+                  isEqualTo: true,
+                ) // ✅ Show only visible products
+                .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData)
             return const Center(child: CircularProgressIndicator());

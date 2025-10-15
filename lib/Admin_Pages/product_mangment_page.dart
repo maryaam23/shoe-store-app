@@ -14,146 +14,556 @@ class ProductManagementScreen extends StatefulWidget {
 
 class _ProductManagementScreenState extends State<ProductManagementScreen> {
   String searchQuery = "";
+  String visibilityFilter = 'All';
+  String stockFilter = 'All';
+  double minPrice = 0; // Minimum value of the slider
+  double maxPrice = 1000; // Maximum value of the slider
+  RangeValues selectedPriceRange = const RangeValues(0, 1000);
+
+  List<String> allCategories = [
+    'All',
+    'Shoes',
+    'Clothes',
+    'Accessories',
+  ]; // default value
+  List<String> allBrands = [
+    'All',
+    'Nike',
+    'Adidas',
+    'Puma',
+    'Reebok',
+    'Columbia',
+    'New Balance',
+    'Converse',
+    'Under Armour',
+    'The North Face',
+    'Skechers',
+    'Roberto Vino',
+    'Lee Cooper',
+    'Le Coq',
+    'Timberland',
+    'Nautica',
+  ];
+
+  String categoryFilter = 'All';
+  String brandFilter = 'All';
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseFirestore.instance.collection('Nproducts').snapshots().listen((
+      snapshot,
+    ) {
+      final categories = <String>{};
+      final brands = <String>{};
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['category'] != null &&
+            data['category'].toString().isNotEmpty) {
+          categories.add(data['category'].toString());
+        }
+        if (data['brand'] != null && data['brand'].toString().isNotEmpty) {
+          brands.add(data['brand'].toString());
+        }
+      }
+
+      setState(() {
+        allCategories = [
+          'All',
+          ...{'Shoes', 'Clothes', 'Accessories', ...categories}.toList()
+            ..sort(),
+        ];
+        allBrands = [
+          'All',
+          ...{
+              'Nike',
+              'Adidas',
+              'Puma',
+              'Reebok',
+              'Columbia',
+              'New Balance',
+              'Converse',
+              'Under Armour',
+              'The North Face',
+              'Skechers',
+              'Roberto Vino',
+              'Lee Cooper',
+              'Le Coq',
+              'Timberland',
+              'Nautica',
+              ...brands,
+            }.toList()
+            ..sort(),
+        ];
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     final h = MediaQuery.of(context).size.height;
 
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus(); // ✅ Hides keyboard
+      },
+      child: Scaffold(
         backgroundColor: Colors.grey[50],
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Products',
-          style: TextStyle(
-            color: const Color(0xFF0d141c),
-            fontWeight: FontWeight.bold,
-            fontSize: 0.05 * w,
+        appBar: AppBar(
+          backgroundColor: Colors.grey[50],
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            'Products',
+            style: TextStyle(
+              color: const Color(0xFF0d141c),
+              fontWeight: FontWeight.bold,
+              fontSize: 0.05 * w,
+            ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddEditProductPage()),
-          );
-        },
-        backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.add, size: 28),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(0.04 * w),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: "Search products...",
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(0.03 * w),
+        floatingActionButton: FloatingActionButton.small(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddEditProductPage()),
+            );
+          },
+          backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              0.05 * w,
+            ), // slightly rounded for modern feel
+          ),
+          child: Icon(Icons.add, size: 0.07 * w, color: Colors.white),
+        ),
+
+        body: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 0.04 * w,
+                vertical: 0.03 * w, // smaller vertical padding
+              ),
+              child: SizedBox(
+                height: 0.07 * h, // adjust height to be smaller
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: "Search products...",
+                    prefixIcon: Icon(
+                      Icons.search,
+                      size: 0.05 * w, // smaller icon
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 0.01 * h, // smaller inner padding
+                      horizontal: 0.03 * w,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(0.09 * w),
+                    ),
+                  ),
+                  onChanged: (val) => setState(() => searchQuery = val),
                 ),
               ),
-              onChanged: (val) => setState(() => searchQuery = val),
             ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream:
-                  FirebaseFirestore.instance
-                      .collection('Nproducts')
-                      .orderBy('createdAt', descending: true)
-                      .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Text(
-                      "No products found.",
-                      style: TextStyle(fontSize: 0.045 * w),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 0.02 * w,
+                vertical: 0.01 * h,
+              ),
+              child: Wrap(
+                spacing: 0.015 * w,
+                runSpacing: 0.01 * h,
+                children: [
+                  // 👁️ Visibility Filter
+                  SizedBox(
+                    width: 0.3 * w,
+                    child: DropdownButtonFormField<String>(
+                      value: visibilityFilter,
+                      isDense: true, // make dropdown compact
+                      decoration: InputDecoration(
+                        labelText: 'Visibility',
+                        labelStyle: TextStyle(
+                          fontSize: 0.028 * w,
+                          color: Colors.black87,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 0.03 * w, // scaled padding
+                          vertical: 0.008 * h, // scaled vertical padding
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            0.015 * w,
+                          ), // scaled radius
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      style: TextStyle(
+                        fontSize: 0.028 * w,
+                        color: Colors.black87,
+                      ),
+                      items:
+                          ['All', 'Visible', 'Hidden']
+                              .map(
+                                (v) =>
+                                    DropdownMenuItem(value: v, child: Text(v)),
+                              )
+                              .toList(),
+                      onChanged:
+                          (val) => setState(() => visibilityFilter = val!),
                     ),
-                  );
-                }
+                  ),
 
-                final products =
-                    snapshot.data!.docs.where((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final name =
-                          (data['name'] ?? '').toString().toLowerCase();
-                      final category =
-                          (data['category'] ?? '').toString().toLowerCase();
-                      final query = searchQuery.toLowerCase();
-                      return name.contains(query) || category.contains(query);
-                    }).toList();
-
-                if (products.isEmpty) {
-                  return Center(
-                    child: Text(
-                      "No products match your search.",
-                      style: TextStyle(fontSize: 0.045 * w),
+                  // 📦 Stock Filter
+                  SizedBox(
+                    width: 0.3 * w,
+                    child: DropdownButtonFormField<String>(
+                      value: stockFilter,
+                      isDense: true,
+                      decoration: InputDecoration(
+                        labelText: 'Stock',
+                        labelStyle: TextStyle(
+                          fontSize: 0.028 * w,
+                          color: Colors.black87,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 0.03 * w, // scaled padding
+                          vertical: 0.008 * h, // scaled vertical padding
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            0.015 * w,
+                          ), // scaled radius
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      style: TextStyle(
+                        fontSize: 0.028 * w,
+                        color: Colors.black87,
+                      ),
+                      items:
+                          ['All', 'In Stock', 'Out of Stock']
+                              .map(
+                                (v) =>
+                                    DropdownMenuItem(value: v, child: Text(v)),
+                              )
+                              .toList(),
+                      onChanged: (val) => setState(() => stockFilter = val!),
                     ),
-                  );
-                }
+                  ),
 
-                return ListView.builder(
-                  itemCount: products.length,
-                  padding: EdgeInsets.symmetric(vertical: 0.01 * h),
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    final data = product.data() as Map<String, dynamic>;
+                  // 🏷 Category Filter
+                  SizedBox(
+                    width: 0.3 * w,
+                    child: DropdownButtonFormField<String>(
+                      value: categoryFilter,
+                      isDense: true,
+                      decoration: InputDecoration(
+                        labelText: 'Category',
+                        labelStyle: TextStyle(
+                          fontSize: 0.028 * w,
+                          color: Colors.black87,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 0.03 * w, // scaled padding
+                          vertical: 0.008 * h, // scaled vertical padding
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            0.015 * w,
+                          ), // scaled radius
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      style: TextStyle(
+                        fontSize: 0.028 * w,
+                        color: Colors.black87,
+                      ),
+                      items:
+                          allCategories
+                              .map(
+                                (v) =>
+                                    DropdownMenuItem(value: v, child: Text(v)),
+                              )
+                              .toList(),
+                      onChanged: (val) => setState(() => categoryFilter = val!),
+                    ),
+                  ),
 
-                    final name = data['name'] ?? '';
-                    final category = data['category'] ?? '';
-                    final clothesType = data['clothesType'] ?? '';
-                    final stock =
-                        (data['quantity'] is double)
-                            ? (data['quantity'] as double).toInt()
-                            : (data['quantity'] is int)
-                            ? data['quantity'] as int
-                            : int.tryParse(
-                                  data['quantity']?.toString() ?? '0',
-                                ) ??
-                                0;
+                  // 🏷 Brand Filter
+                  SizedBox(
+                    width: 0.31 * w,
+                    child: DropdownButtonFormField<String>(
+                      value: brandFilter,
+                      isDense: true,
+                      decoration: InputDecoration(
+                        labelText: 'Brand',
+                        labelStyle: TextStyle(
+                          fontSize: 0.028 * w,
+                          color: Colors.black87,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 0.03 * w, // scaled padding
+                          vertical: 0.008 * h, // scaled vertical padding
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            0.015 * w,
+                          ), // scaled radius
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      style: TextStyle(
+                        fontSize: 0.028 * w,
+                        color: Colors.black87,
+                      ),
+                      items:
+                          allBrands
+                              .map(
+                                (v) =>
+                                    DropdownMenuItem(value: v, child: Text(v)),
+                              )
+                              .toList(),
+                      onChanged: (val) => setState(() => brandFilter = val!),
+                    ),
+                  ),
 
-                    // Automatically mark out-of-stock if quantity <= 0
-                    final inStock = stock > 0;
+                  // 💲 Price Range Filter
+                  SizedBox(
+                    width: 0.45 * w,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Row for "Price Range" title + From-To labels
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Price Range",
+                              style: TextStyle(
+                                fontSize: 0.028 * w, // proportional to width
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  "From: \$${selectedPriceRange.start.toStringAsFixed(0)}",
+                                  style: TextStyle(
+                                    fontSize:
+                                        0.022 * w, // smaller proportional size
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 0.02 * w,
+                                ), // spacing proportional to width
+                                Text(
+                                  "To: \$${selectedPriceRange.end.toStringAsFixed(0)}",
+                                  style: TextStyle(
+                                    fontSize: 0.022 * w,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
 
-                    final price =
-                        (data['price'] is int)
-                            ? (data['price'] as int).toDouble()
-                            : (data['price'] is double)
-                            ? data['price'] as double
-                            : double.tryParse(
-                                  data['price']?.toString() ?? '0',
-                                ) ??
-                                0.0;
+                        // Small space before slider
+                        SizedBox(height: 0.005 * h), // proportional to height
+                        // Smaller RangeSlider using SliderTheme
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 0.005 * h, // proportional to height
+                            thumbShape: RoundSliderThumbShape(
+                              enabledThumbRadius: 0.015 * w, // proportional to width
+                            ),
+                            overlayShape: RoundSliderOverlayShape(
+                              overlayRadius: 0.03 * w, // proportional to width
+                            ),
+                          ),
+                          child: RangeSlider(
+                            values: selectedPriceRange,
+                            min: minPrice,
+                            max: maxPrice,
+                            activeColor: const Color.fromARGB(216, 79, 125, 253),
+                            inactiveColor: const Color.fromARGB(91, 108, 184, 255),
+                            divisions: 100,
+                            labels: RangeLabels(
+                              "\$${selectedPriceRange.start.toStringAsFixed(0)}",
+                              "\$${selectedPriceRange.end.toStringAsFixed(0)}",
+                            ),
+                            onChanged: (RangeValues values) {
+                              setState(() {
+                                selectedPriceRange = values;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-                    final imageUrl = data['image'] ?? '';
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('Nproducts')
+                        .orderBy('createdAt', descending: true)
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                    return ProductItem(
-                      id: product.id,
-                      name: name,
-                      category: category,
-                      clothesType: clothesType,
-                      stock: stock,
-                      price: price,
-                      imageUrl: imageUrl,
-                      inStock: inStock,
-                      w: w,
-                      h: h,
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "No products found.",
+                        style: TextStyle(fontSize: 0.045 * w),
+                      ),
                     );
-                  },
-                );
-              },
+                  }
+
+                  final products =
+                      snapshot.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+
+                        final name =
+                            (data['name'] ?? '').toString().toLowerCase();
+                        final category = (data['category'] ?? '').toString();
+                        final brand = (data['brand'] ?? '').toString();
+                        final query = searchQuery.toLowerCase();
+
+                        final visible = data['visible'] ?? true;
+                        final stock =
+                            (data['quantity'] is num)
+                                ? (data['quantity'] as num).toInt()
+                                : int.tryParse(
+                                      data['quantity']?.toString() ?? '0',
+                                    ) ??
+                                    0;
+                        final inStock = stock > 0;
+
+                        bool matchesSearch =
+                            name.contains(query) ||
+                            category.toLowerCase().contains(query);
+                        bool matchesVisibility =
+                            visibilityFilter == 'All' ||
+                            (visibilityFilter == 'Visible' && visible) ||
+                            (visibilityFilter == 'Hidden' && !visible);
+                        bool matchesStock =
+                            stockFilter == 'All' ||
+                            (stockFilter == 'In Stock' && inStock) ||
+                            (stockFilter == 'Out of Stock' && !inStock);
+                        bool matchesCategory =
+                            categoryFilter == 'All' ||
+                            category == categoryFilter;
+                        bool matchesBrand =
+                            brandFilter == 'All' || brand == brandFilter;
+
+                        bool matchesPrice = true;
+                        final price =
+                            (data['price'] is num)
+                                ? (data['price'] as num).toDouble()
+                                : double.tryParse(
+                                      data['price']?.toString() ?? '0',
+                                    ) ??
+                                    0.0;
+
+                        matchesPrice =
+                            price >= selectedPriceRange.start &&
+                            price <= selectedPriceRange.end;
+
+                        return matchesSearch &&
+                            matchesVisibility &&
+                            matchesStock &&
+                            matchesCategory &&
+                            matchesBrand &&
+                            matchesPrice;
+                      }).toList();
+
+                  if (products.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "No products match your search.",
+                        style: TextStyle(fontSize: 0.045 * w),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: products.length,
+                    padding: EdgeInsets.symmetric(vertical: 0.01 * h),
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      final data = product.data() as Map<String, dynamic>;
+
+                      final name = data['name'] ?? '';
+                      final category = data['category'] ?? '';
+                      final clothesType = data['clothesType'] ?? '';
+                      final stock =
+                          (data['quantity'] is double)
+                              ? (data['quantity'] as double).toInt()
+                              : (data['quantity'] is int)
+                              ? data['quantity'] as int
+                              : int.tryParse(
+                                    data['quantity']?.toString() ?? '0',
+                                  ) ??
+                                  0;
+
+                      // Automatically mark out-of-stock if quantity <= 0
+                      final inStock = stock > 0;
+                      final visible = data['visible'] ?? true;
+
+                      final price =
+                          (data['price'] is int)
+                              ? (data['price'] as int).toDouble()
+                              : (data['price'] is double)
+                              ? data['price'] as double
+                              : double.tryParse(
+                                    data['price']?.toString() ?? '0',
+                                  ) ??
+                                  0.0;
+
+                      final imageUrl = data['image'] ?? '';
+
+                      return ProductItem(
+                        id: product.id,
+                        name: name,
+                        category: category,
+                        clothesType: clothesType,
+                        stock: stock,
+                        price: price,
+                        imageUrl: imageUrl,
+                        inStock: inStock,
+                        visible: visible,
+                        w: w,
+                        h: h,
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -168,6 +578,7 @@ class ProductItem extends StatelessWidget {
   final double price;
   final String imageUrl;
   final bool inStock;
+  final bool visible;
   final double w;
   final double h;
 
@@ -181,6 +592,7 @@ class ProductItem extends StatelessWidget {
     required this.price,
     required this.imageUrl,
     required this.inStock,
+    required this.visible,
     required this.w,
     required this.h,
   });
@@ -331,6 +743,28 @@ class ProductItem extends StatelessWidget {
                       ),
                     ),
                   ),
+              // 🧩 Visibility status for admin
+              if (!visible)
+                Container(
+                  margin: EdgeInsets.only(top: 0.005 * h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 0.02 * w,
+                    vertical: 0.003 * h,
+                  ),
+
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(0.02 * w),
+                  ),
+                  child: Text(
+                    "Hidden from users",
+                    style: TextStyle(
+                      fontSize: 0.03 * w,
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
             ],
           ),
           trailing: PopupMenuButton<String>(
@@ -384,6 +818,7 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     'colors': <String>[],
     'sizes': <int>[],
     'inStock': true,
+    'visible': true, // ✅ new field
   };
 
   final colorsController = TextEditingController();
@@ -491,6 +926,9 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
             ? pickedImage!.path
             : imageUrlController.text.trim();
 
+    // ✅ Auto-manage inStock based on quantity
+    productData['inStock'] = (productData['quantity'] ?? 0) > 0;
+
     setState(() => isLoading = true);
     final collection = FirebaseFirestore.instance.collection('Nproducts');
 
@@ -510,6 +948,7 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
       );
       Navigator.pop(context);
     }
+
     setState(() => isLoading = false);
   }
 
@@ -561,144 +1000,302 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     final h = MediaQuery.of(context).size.height;
     final isEditing = widget.productId != null;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepOrange,
-        title: Text(isEditing ? 'Edit Product' : 'Add Product'),
-      ),
-      body:
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                padding: EdgeInsets.all(0.04 * w),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () => pickImage(context),
-                        child: Container(
-                          width: double.infinity,
-                          height: 0.3 * h,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey),
-                            borderRadius: BorderRadius.circular(0.03 * w),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 6,
-                                offset: Offset(2, 2),
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus(); // ✅ Hides keyboard
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[100],
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 2,
+          centerTitle: true,
+          title: Text(
+            isEditing ? 'Edit Product' : 'Add Product',
+            style: TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 0.05 * w,
+            ),
+          ),
+          iconTheme: const IconThemeData(color: Colors.black87),
+        ),
+        body:
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 0.05 * w,
+                    vertical: 0.03 * h,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: EdgeInsets.all(0.05 * w),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          /// 🖼️ Image Picker
+                          Center(
+                            child: GestureDetector(
+                              onTap: () => pickImage(context),
+                              child: Container(
+                                width: double.infinity,
+                                height: 0.25 * h,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(10),
+                                  image:
+                                      pickedImage != null
+                                          ? DecorationImage(
+                                            image: FileImage(pickedImage!),
+                                            fit: BoxFit.cover,
+                                          )
+                                          : (imageUrlController
+                                                  .text
+                                                  .isNotEmpty &&
+                                              (imageUrlController.text
+                                                      .startsWith('http') ||
+                                                  imageUrlController.text
+                                                      .startsWith('https')))
+                                          ? DecorationImage(
+                                            image: NetworkImage(
+                                              imageUrlController.text,
+                                            ),
+                                            fit: BoxFit.cover,
+                                          )
+                                          : null,
+                                ),
+                                child:
+                                    pickedImage == null &&
+                                            (imageUrlController.text.isEmpty ||
+                                                !imageUrlController.text
+                                                    .startsWith('http'))
+                                        ? Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.add_a_photo,
+                                              size: 0.07 * w,
+                                              color: Colors.grey[600],
+                                            ),
+                                            SizedBox(height: 0.01 * h),
+                                            Text(
+                                              'Tap to upload product image',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                        : null,
                               ),
-                            ],
-                            image:
-                                pickedImage != null
-                                    ? DecorationImage(
-                                      image: FileImage(pickedImage!),
-                                      fit: BoxFit.cover,
-                                    )
-                                    : (imageUrlController.text.isNotEmpty &&
-                                        (imageUrlController.text.startsWith(
-                                              'http',
-                                            ) ||
-                                            imageUrlController.text.startsWith(
-                                              'https',
-                                            )))
-                                    ? DecorationImage(
-                                      image: NetworkImage(
-                                        imageUrlController.text,
-                                      ),
-                                      fit: BoxFit.cover,
-                                    )
-                                    : null,
-                          ),
-                          child:
-                              pickedImage == null &&
-                                      (imageUrlController.text.isEmpty ||
-                                          !imageUrlController.text.startsWith(
-                                            'http',
-                                          ))
-                                  ? const Center(
-                                    child: Icon(Icons.add_a_photo, size: 50),
-                                  )
-                                  : null,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      TextFormField(
-                        controller: imageUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Image URL (or pick an image above)',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (val) {
-                          setState(() {
-                            productData['image'] = val;
-                            pickedImage = null;
-                          });
-                        },
-                      ),
-                      SizedBox(height: 0.02 * h),
-                      buildTextField('Name', 'name', w),
-                      buildTextField('Brand', 'brand', w),
-                      buildTextField('Category', 'category', w),
-                      buildTextField('Clothes Type', 'clothesType', w),
-                      buildTextField('Description', 'description', w),
-                      buildTextField('Price', 'price', w, isNumber: true),
-                      buildTextField('Quantity', 'quantity', w, isNumber: true),
-                      buildTextField('SKU', 'sku', w),
-                      SizedBox(height: 0.02 * h),
-                      TextFormField(
-                        controller: colorsController,
-                        decoration: InputDecoration(
-                          labelText: 'Colors (comma-separated HEX)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(0.03 * w),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 0.02 * h),
-                      TextFormField(
-                        controller: sizesController,
-                        decoration: InputDecoration(
-                          labelText: 'Sizes (comma-separated numbers)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(0.03 * w),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 0.02 * h),
-                      SwitchListTile(
-                        title: const Text('In Stock'),
-                        value: productData['inStock'] ?? true,
-                        onChanged: (val) {
-                          setState(() {
-                            productData['inStock'] = val;
-                          });
-                        },
-                      ),
-                      SizedBox(height: 0.03 * h),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.save),
-                          label: Text(
-                            isEditing ? 'Update Product' : 'Add Product',
-                          ),
-                          onPressed: _saveProduct,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepOrange,
-                            padding: EdgeInsets.symmetric(vertical: 0.018 * h),
-                            textStyle: TextStyle(
-                              fontSize: 0.045 * w,
-                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
+                          SizedBox(height: 0.02 * h),
+
+                          /// 🔗 Image URL
+                          TextFormField(
+                            controller: imageUrlController,
+                            decoration: InputDecoration(
+                              labelText: 'Image URL',
+                              hintText: 'https://example.com/image.jpg',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey[50],
+                            ),
+                            onChanged: (val) {
+                              setState(() {
+                                productData['image'] = val;
+                                pickedImage = null;
+                              });
+                            },
+                          ),
+
+                          SizedBox(height: 0.025 * h),
+
+                          /// 🏷️ Basic Info
+                          Text(
+                            "Product Details",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 0.045 * w,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 0.01 * h),
+                          buildTextField('Name', 'name', w),
+                          buildTextField('Brand', 'brand', w),
+
+                          /// 🏷 Category Selection
+                          /// 🏷 Category Selection
+                          Text(
+                            "Category",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 0.04 * w,
+                            ),
+                          ),
+                          SizedBox(height: 0.01 * h),
+
+                          Wrap(
+                            spacing: 0.02 * w,
+                            children: [
+                              for (var cat in [
+                                'Shoes',
+                                'Clothes',
+                                'Accessories',
+                              ])
+                                ChoiceChip(
+                                  label: Text(cat),
+                                  selected: productData['category'] == cat,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      productData['category'] =
+                                          selected ? cat : '';
+                                    });
+                                  },
+                                ),
+                            ],
+                          ),
+                          SizedBox(height: 0.015 * h),
+                          buildTextField('Clothes Type', 'clothesType', w),
+
+                          SizedBox(height: 0.015 * h),
+                          Text(
+                            "Description",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 0.04 * w,
+                            ),
+                          ),
+                          SizedBox(height: 0.01 * h),
+                          buildTextField('Description', 'description', w),
+
+                          SizedBox(height: 0.025 * h),
+
+                          /// 💰 Price & Stock
+                          Text(
+                            "Pricing & Stock",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 0.045 * w,
+                            ),
+                          ),
+                          SizedBox(height: 0.01 * h),
+                          buildTextField(
+                            'Price (₪)',
+                            'price',
+                            w,
+                            isNumber: true,
+                          ),
+                          buildTextField(
+                            'Quantity',
+                            'quantity',
+                            w,
+                            isNumber: true,
+                          ),
+                          buildTextField('SKU', 'sku', w),
+
+                          SizedBox(height: 0.025 * h),
+
+                          /// 🎨 Colors & Sizes
+                          Text(
+                            "Attributes",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 0.045 * w,
+                            ),
+                          ),
+                          SizedBox(height: 0.01 * h),
+                          TextFormField(
+                            controller: colorsController,
+                            decoration: InputDecoration(
+                              labelText: 'Colors (comma-separated HEX)',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey[50],
+                            ),
+                          ),
+                          SizedBox(height: 0.01 * h),
+                          TextFormField(
+                            controller: sizesController,
+                            decoration: InputDecoration(
+                              labelText: 'Sizes (comma-separated numbers)',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey[50],
+                            ),
+                          ),
+
+                          SizedBox(height: 0.025 * h),
+
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Visible to Users',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            activeColor: Colors.black87,
+                            value: productData['visible'] ?? true,
+                            onChanged: (val) {
+                              setState(() {
+                                productData['visible'] = val;
+                              });
+                            },
+                          ),
+                          SizedBox(height: 0.025 * h),
+
+                          /// 💾 Save Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 0.065 * h,
+                            child: ElevatedButton.icon(
+                              onPressed: _saveProduct,
+                              icon: const Icon(
+                                Icons.save_outlined,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                isEditing ? 'Update Product' : 'Add Product',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 0.04 * w,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black87,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+      ),
     );
   }
 }
