@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // For SVG icons
 import 'package:shoe_store_app/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shoe_store_app/role_wrapper.dart';
 import 'home_page.dart';
 import 'signup_page.dart';
 import 'package:shoe_store_app/main.dart';
@@ -50,52 +51,6 @@ class _LoginPageState extends State<LoginPage> {
 
     // If user is already logged in, check role
     // If user is already logged in, check role in real-time
-    if (user != null) {
-      return StreamBuilder<DocumentSnapshot>(
-        stream:
-            FirebaseFirestore.instance
-                .collection('users')
-                .doc(FirebaseAuth.instance.currentUser!.uid)
-                .snapshots(), // 🔹 real-time stream
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          if (snapshot.hasError ||
-              !snapshot.hasData ||
-              !snapshot.data!.exists) {
-            return const Scaffold(
-              body: Center(child: Text("Error fetching user data")),
-            );
-          }
-
-          final userRole = snapshot.data!['role'];
-
-          // Navigate only once using a post-frame callback
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (userRole == 'admin') {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => AdminOverviewScreen()),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const HomePage()),
-              );
-            }
-          });
-
-          // While waiting for navigation
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        },
-      );
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -357,12 +312,28 @@ class _LoginPageState extends State<LoginPage> {
 
                                             if (user != null &&
                                                 user.emailVerified) {
-                                              Navigator.pushReplacement(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => HomePage(),
-                                                ),
-                                              );
+                                              final userDoc =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('users')
+                                                      .doc(user.uid)
+                                                      .get();
+
+                                              if (userDoc.exists) {
+                                                Navigator.pushAndRemoveUntil(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder:
+                                                        (_) =>
+                                                            const RoleWrapper(),
+                                                  ),
+                                                  (route) => false,
+                                                );
+                                              } else {
+                                                showSnackBar(
+                                                  "User data not found in Firestore.",
+                                                );
+                                              }
                                             } else {
                                               await FirebaseAuth.instance
                                                   .signOut();
@@ -536,7 +507,8 @@ class _LoginPageState extends State<LoginPage> {
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) => HomePage(),
+                                              builder:
+                                                  (_) => const RoleWrapper(),
                                             ),
                                           );
                                         } else {
@@ -566,7 +538,8 @@ class _LoginPageState extends State<LoginPage> {
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) => HomePage(),
+                                              builder:
+                                                  (_) => const RoleWrapper(),
                                             ),
                                           );
                                         } else {
