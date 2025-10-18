@@ -626,6 +626,7 @@ class _SignupPageState extends State<SignupPage> {
                                             "longitude": null,
                                             "address": "No address saved",
                                           },
+                                          "role": "user", // ✅ default role
                                         });
 
                                     // 6️⃣ Sign out so user can log in fresh
@@ -708,7 +709,7 @@ class _SignupPageState extends State<SignupPage> {
                                             MaterialPageRoute(
                                               builder:
                                                   (context) =>
-                                                      const LoginPage(), // your Sign In page
+                                                      const LoginPage(fromProfile: false), // your Sign In page
                                             ),
                                           );
                                         },
@@ -744,7 +745,39 @@ class _SignupPageState extends State<SignupPage> {
                                     print(
                                       "✅ Google login: ${user.displayName}",
                                     );
-                                    // You can navigate to your home page here
+
+                                    final userDoc = FirebaseFirestore.instance
+                                        .collection("users")
+                                        .doc(user.uid);
+                                    final docSnapshot = await userDoc.get();
+
+                                    // Save user info if not exists
+                                    if (!docSnapshot.exists) {
+                                      await userDoc.set({
+                                        "fullName":
+                                            user.displayName ??
+                                            "", // Google name
+                                        "dob": "", // leave empty
+                                        "phone": "", // leave empty
+                                        "gender": null,
+                                        "city": null,
+                                        "email": user.email ?? "",
+                                        "country": "Palestine",
+                                        "createdAt":
+                                            FieldValue.serverTimestamp(),
+                                        "photoURL": user.photoURL ?? "",
+                                        "selectedPaymentMethod": {
+                                          "type": "Cash on Delivery",
+                                        },
+                                        "savedAddress": {
+                                          "latitude": null,
+                                          "longitude": null,
+                                          "address": "No address saved",
+                                        },
+                                        "role": "user",
+                                      });
+                                    }
+
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
@@ -783,6 +816,38 @@ class _SignupPageState extends State<SignupPage> {
                                     print(
                                       "✅ Facebook login: ${user.displayName}",
                                     );
+
+                                    final userDoc = FirebaseFirestore.instance
+                                        .collection("users")
+                                        .doc(user.uid);
+                                    final docSnapshot = await userDoc.get();
+
+                                    if (!docSnapshot.exists) {
+                                      await userDoc.set({
+                                        "fullName":
+                                            user.displayName ??
+                                            "", // Facebook name
+                                        "dob": "",
+                                        "phone": "",
+                                        "gender": null,
+                                        "city": null,
+                                        "email": user.email ?? "",
+                                        "country": "Palestine",
+                                        "createdAt":
+                                            FieldValue.serverTimestamp(),
+                                        "photoURL": user.photoURL ?? "",
+                                        "selectedPaymentMethod": {
+                                          "type": "Cash on Delivery",
+                                        },
+                                        "savedAddress": {
+                                          "latitude": null,
+                                          "longitude": null,
+                                          "address": "No address saved",
+                                        },
+                                        "role": "user",
+                                      });
+                                    }
+
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(

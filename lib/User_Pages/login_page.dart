@@ -8,6 +8,7 @@ import 'signup_page.dart';
 import 'package:shoe_store_app/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shoe_store_app/Admin_Pages/admin_overview_page.dart';
 
 class LoginPage extends StatefulWidget {
   final bool fromProfile;
@@ -47,16 +48,61 @@ class _LoginPageState extends State<LoginPage> {
     final double buttonHeight = size.height * 0.065;
     final double buttonFontSize = size.width * 0.05;
 
-    // If user is already logged in, go directly to HomePage
+    // If user is already logged in, check role
+    // If user is already logged in, check role in real-time
     if (user != null) {
-      return HomePage();
+      return StreamBuilder<DocumentSnapshot>(
+        stream:
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(FirebaseAuth.instance.currentUser!.uid)
+                .snapshots(), // 🔹 real-time stream
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasError ||
+              !snapshot.hasData ||
+              !snapshot.data!.exists) {
+            return const Scaffold(
+              body: Center(child: Text("Error fetching user data")),
+            );
+          }
+
+          final userRole = snapshot.data!['role'];
+
+          // Navigate only once using a post-frame callback
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (userRole == 'admin') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => AdminOverviewScreen()),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const HomePage()),
+              );
+            }
+          });
+
+          // While waiting for navigation
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        },
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: widget.fromProfile, // ✅ Add this line
+        //automaticallyImplyLeading: widget.fromProfile, // ✅ Add this line
         leading:
             widget.fromProfile
                 ? IconButton(
@@ -484,10 +530,9 @@ class _LoginPageState extends State<LoginPage> {
                                             await AuthService()
                                                 .signInWithGoogle();
                                         if (user != null) {
-                                          print(
-                                            "✅ Google login: ${user.displayName}",
+                                          await _saveSocialUserToFirestore(
+                                            user,
                                           );
-                                          // You can navigate to your home page here
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
@@ -515,8 +560,8 @@ class _LoginPageState extends State<LoginPage> {
                                             await AuthService()
                                                 .signInWithFacebook();
                                         if (user != null) {
-                                          print(
-                                            "✅ Facebook login: ${user.displayName}",
+                                          await _saveSocialUserToFirestore(
+                                            user,
                                           );
                                           Navigator.pushReplacement(
                                             context,
@@ -545,6 +590,34 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _saveSocialUserToFirestore(User user) async {
+    final userDoc = FirebaseFirestore.instance
+        .collection("users")
+        .doc(user.uid);
+    final docSnapshot = await userDoc.get();
+
+    if (!docSnapshot.exists) {
+      await userDoc.set({
+        "fullName": user.displayName ?? "",
+        "dob": "",
+        "phone": "",
+        "gender": null,
+        "city": null,
+        "email": user.email ?? "",
+        "country": "Palestine",
+        "createdAt": FieldValue.serverTimestamp(),
+        "photoURL": user.photoURL ?? "",
+        "selectedPaymentMethod": {"type": "Cash on Delivery"},
+        "savedAddress": {
+          "latitude": null,
+          "longitude": null,
+          "address": "No address saved",
+        },
+        "role": "user",
+      });
+    }
   }
 
   void _showForgotPasswordDialog(BuildContext context) {

@@ -552,10 +552,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   // 🛒 Cart + ❤️ Wishlist buttons
                                   Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: w * 0.02,
-                                      vertical: 8,
-                                    ),
+                                     padding: EdgeInsets.symmetric(horizontal: w * 0.02),
                                     child: Row(
                                       children: [
                                         // Cart button
@@ -794,9 +791,7 @@ class _HomePageState extends State<HomePage> {
 
                                                             // Add to cart button
                                                             SizedBox(
-                                                              width:
-                                                                  double
-                                                                      .infinity,
+                                                              width: w * 0.9,
                                                               height: h * 0.06,
                                                               child: ElevatedButton.icon(
                                                                 style: ElevatedButton.styleFrom(
@@ -937,7 +932,7 @@ class _HomePageState extends State<HomePage> {
                                         // Wishlist button
                                         Expanded(
                                           flex: 1,
-                                          child: IconButton(
+                                          child:IconButton(
                                             iconSize: w * 0.06,
                                             icon: Icon(
                                               isInWishlist
