@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'users_mangment_page.dart';
 import 'report_page.dart';
+import 'add_admin_page.dart';
 import 'package:shoe_store_app/User_Pages/login_page.dart';
 
 class AdminProfilePage extends StatelessWidget {
@@ -67,7 +68,11 @@ class AdminProfilePage extends StatelessWidget {
               icon: Icons.person_add,
               label: 'Add Admin',
               onTap: () {
-                // Navigate to Add Admin Page
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AddAdminPage()),
+                    
+                  );
               },
             ),
             _actionButton(
@@ -75,10 +80,10 @@ class AdminProfilePage extends StatelessWidget {
               icon: Icons.group,
               label: 'Users Page',
               onTap: () {
-                Navigator.pushAndRemoveUntil(
+                Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const UsersManagementPage()),
-                    (route) => false,
+                    
                   );
               },
             ),
@@ -87,10 +92,10 @@ class AdminProfilePage extends StatelessWidget {
               icon: Icons.bar_chart,
               label: 'Reports Page',
               onTap: () {
-                Navigator.pushAndRemoveUntil(
+                Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
-                    (route) => false,
+                    
                   );
               },
             ),

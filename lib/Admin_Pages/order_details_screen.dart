@@ -45,8 +45,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     final items = orderData['items'] ?? [];
     final status = orderData['status'] ?? 'Processing';
+    final double spacing = size.height * 0.02;
 
     return Scaffold(
       appBar: AppBar(
@@ -60,6 +62,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               'Customer: ${orderData['customer']}',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+          const SizedBox(height: 4),
+            
+              Text(
+                'Phone: ${orderData['phone']}',
+                style: const TextStyle(fontSize: 14),
+              ),
+            
+              Text(
+                'Address: ${orderData['city']}',
+                style: const TextStyle(fontSize: 14),
+              ),
             const SizedBox(height: 8),
             Text('Status: $status'),
             Text('Total: \$${orderData['total']}'),
@@ -133,7 +146,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 child: Text(
                   'This order is already delivered ✅',
                   style: TextStyle(
-                      color: Colors.green, fontWeight: FontWeight.bold),
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
           ],
