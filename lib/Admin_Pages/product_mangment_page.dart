@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 class ProductManagementScreen extends StatefulWidget {
   const ProductManagementScreen({super.key});
@@ -389,7 +390,8 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                           data: SliderTheme.of(context).copyWith(
                             trackHeight: 0.005 * h, // proportional to height
                             thumbShape: RoundSliderThumbShape(
-                              enabledThumbRadius: 0.015 * w, // proportional to width
+                              enabledThumbRadius:
+                                  0.015 * w, // proportional to width
                             ),
                             overlayShape: RoundSliderOverlayShape(
                               overlayRadius: 0.03 * w, // proportional to width
@@ -399,8 +401,18 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                             values: selectedPriceRange,
                             min: minPrice,
                             max: maxPrice,
-                            activeColor: const Color.fromARGB(216, 79, 125, 253),
-                            inactiveColor: const Color.fromARGB(91, 108, 184, 255),
+                            activeColor: const Color.fromARGB(
+                              216,
+                              79,
+                              125,
+                              253,
+                            ),
+                            inactiveColor: const Color.fromARGB(
+                              91,
+                              108,
+                              184,
+                              255,
+                            ),
                             divisions: 100,
                             labels: RangeLabels(
                               "\$${selectedPriceRange.start.toStringAsFixed(0)}",
@@ -452,13 +464,22 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                         final query = searchQuery.toLowerCase();
 
                         final visible = data['visible'] ?? true;
-                        final stock =
-                            (data['quantity'] is num)
-                                ? (data['quantity'] as num).toInt()
-                                : int.tryParse(
-                                      data['quantity']?.toString() ?? '0',
-                                    ) ??
-                                    0;
+
+                        int stock = 0;
+
+                        if (data['variants'] != null &&
+                            data['variants'] is Map) {
+                          final variants =
+                              data['variants'] as Map<String, dynamic>;
+                          variants.forEach((color, sizes) {
+                            if (sizes is Map<String, dynamic>) {
+                              sizes.forEach((size, qty) {
+                                if (qty is num) stock += qty.toInt();
+                              });
+                            }
+                          });
+                        }
+
                         final inStock = stock > 0;
 
                         bool matchesSearch =
@@ -517,16 +538,21 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
 
                       final name = data['name'] ?? '';
                       final category = data['category'] ?? '';
+                      final brand = data['brand'] ?? '';
                       final clothesType = data['clothesType'] ?? '';
-                      final stock =
-                          (data['quantity'] is double)
-                              ? (data['quantity'] as double).toInt()
-                              : (data['quantity'] is int)
-                              ? data['quantity'] as int
-                              : int.tryParse(
-                                    data['quantity']?.toString() ?? '0',
-                                  ) ??
-                                  0;
+                      // Calculate total stock from variants
+                      int stock = 0;
+                      if (data['variants'] != null && data['variants'] is Map) {
+                        final variants =
+                            data['variants'] as Map<String, dynamic>;
+                        variants.forEach((color, sizes) {
+                          if (sizes is Map<String, dynamic>) {
+                            sizes.forEach((size, qty) {
+                              if (qty is num) stock += qty.toInt();
+                            });
+                          }
+                        });
+                      }
 
                       // Automatically mark out-of-stock if quantity <= 0
                       final inStock = stock > 0;
@@ -554,6 +580,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                         imageUrl: imageUrl,
                         inStock: inStock,
                         visible: visible,
+                        brand: brand,
                         w: w,
                         h: h,
                       );
@@ -576,6 +603,8 @@ class ProductItem extends StatelessWidget {
   final String clothesType;
   final int stock;
   final double price;
+  final String brand;
+
   final String imageUrl;
   final bool inStock;
   final bool visible;
@@ -590,6 +619,8 @@ class ProductItem extends StatelessWidget {
     required this.clothesType,
     required this.stock,
     required this.price,
+    required this.brand,
+
     required this.imageUrl,
     required this.inStock,
     required this.visible,
@@ -681,9 +712,10 @@ class ProductItem extends StatelessWidget {
             children: [
               SizedBox(height: 0.005 * h),
               Text(
-                "Category: $category | Type: $clothesType",
+                "Category: $category | Brand: $brand",
                 style: TextStyle(fontSize: 0.035 * w),
               ),
+
               SizedBox(height: 0.005 * h),
               Row(
                 children: [
@@ -813,16 +845,14 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     'description': '',
     'image': '',
     'price': 0.0,
-    'quantity': 0,
+
     'sku': '',
-    'colors': <String>[],
-    'sizes': <int>[],
+
+    'variants': <String, Map<String, int>>{}, // color -> {size: quantity}
     'inStock': true,
     'visible': true, // ✅ new field
   };
 
-  final colorsController = TextEditingController();
-  final sizesController = TextEditingController();
   final imageUrlController = TextEditingController();
 
   bool isLoading = false;
@@ -834,25 +864,169 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     if (widget.productId != null) _loadProduct();
   }
 
+  // Fixed Add Color Dialog
+  // Fixed Add Color Dialog with Color Picker Wheel
+  Future<Map<String, dynamic>?> pickColorDialog(BuildContext context) async {
+    Color selectedColor = Colors.red; // Default
+    final Map<String, int> sizeQtyMap = {};
+
+    final sizeController = TextEditingController();
+    final qtyController = TextEditingController();
+
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder:
+          (_) => StatefulBuilder(
+            builder:
+                (context, setState) => AlertDialog(
+                  title: Text("Add Color & Sizes"),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // 🔴 Color Picker Circle
+                        ColorPicker(
+                          pickerColor: selectedColor,
+                          onColorChanged: (color) {
+                            setState(() => selectedColor = color);
+                          },
+                          showLabel: true,
+                          pickerAreaHeightPercent: 0.6,
+                        ),
+                        SizedBox(height: 10),
+                        Column(
+                          children:
+                              sizeQtyMap.entries.map((e) {
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text("${e.key}: ${e.value}"),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete),
+                                      onPressed: () {
+                                        setState(() {
+                                          sizeQtyMap.remove(e.key);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: sizeController,
+                                decoration: InputDecoration(labelText: 'Size'),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: qtyController,
+                                decoration: InputDecoration(
+                                  labelText: 'Quantity',
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.add, color: Colors.green),
+                              onPressed: () {
+                                final size = sizeController.text.trim();
+                                final qty =
+                                    int.tryParse(qtyController.text.trim()) ??
+                                    0;
+                                if (size.isNotEmpty && qty > 0) {
+                                  setState(() {
+                                    sizeQtyMap[size] = qty;
+                                  });
+                                  sizeController.clear();
+                                  qtyController.clear();
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, null),
+                      child: Text("Cancel"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Commit the last size & qty entered (if any)
+                        final lastSize = sizeController.text.trim();
+                        final lastQty =
+                            int.tryParse(qtyController.text.trim()) ?? 0;
+                        if (lastSize.isNotEmpty && lastQty > 0) {
+                          sizeQtyMap[lastSize] = lastQty;
+                        }
+
+                        if (sizeQtyMap.isEmpty) return;
+
+                        Navigator.pop(context, {
+                          'color':
+                              '#${selectedColor.value.toRadixString(16).substring(2)}',
+                          'sizes': Map<String, int>.from(sizeQtyMap),
+                        });
+                      },
+                      child: Text("Add Color"),
+                    ),
+                  ],
+                ),
+          ),
+    );
+  }
+
   Future<void> _loadProduct() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
+
     final doc =
         await FirebaseFirestore.instance
             .collection('Nproducts')
             .doc(widget.productId)
             .get();
 
+    if (!mounted) return; // ✅ important
+
     if (doc.exists) {
       final data = doc.data()!;
       setState(() {
         productData.addAll(data);
-        colorsController.text =
-            (data['colors'] as List<dynamic>?)?.join(', ') ?? '';
-        sizesController.text =
-            (data['sizes'] as List<dynamic>?)?.join(', ') ?? '';
+
+        productData['variants'] =
+            (data['variants'] as Map<String, dynamic>?)?.map(
+              (color, sizes) => MapEntry(
+                color,
+                (sizes as Map<String, dynamic>).map(
+                  (size, qty) => MapEntry(size, (qty as num).toInt()),
+                ),
+              ),
+            ) ??
+            {};
+
         imageUrlController.text = data['image'] ?? '';
+
+        int totalQty = 0;
+        (productData['variants'] as Map<String, Map<String, int>>).forEach((
+          color,
+          sizes,
+        ) {
+          sizes.forEach((size, qty) {
+            totalQty += qty;
+          });
+        });
+        productData['inStock'] = totalQty > 0;
       });
     }
+
+    if (!mounted) return;
     setState(() => isLoading = false);
   }
 
@@ -914,22 +1088,25 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    productData['colors'] =
-        colorsController.text.split(',').map((c) => c.trim()).toList();
-    productData['sizes'] =
-        sizesController.text
-            .split(',')
-            .map((s) => int.tryParse(s.trim()) ?? 0)
-            .toList();
+    int totalQty = 0;
+    (productData['variants'] as Map<String, Map<String, int>>).forEach((
+      color,
+      sizes,
+    ) {
+      sizes.forEach((size, qty) {
+        totalQty += qty;
+      });
+    });
+    productData['inStock'] = totalQty > 0;
+
     productData['image'] =
         pickedImage != null
             ? pickedImage!.path
             : imageUrlController.text.trim();
 
-    // ✅ Auto-manage inStock based on quantity
-    productData['inStock'] = (productData['quantity'] ?? 0) > 0;
-
+    if (!mounted) return;
     setState(() => isLoading = true);
+
     final collection = FirebaseFirestore.instance.collection('Nproducts');
 
     if (widget.productId == null) {
@@ -938,17 +1115,19 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
       await collection.doc(widget.productId).update(productData);
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.productId == null ? "Product added!" : "Product updated!",
-          ),
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.productId == null ? "Product added!" : "Product updated!",
         ),
-      );
-      Navigator.pop(context);
-    }
+      ),
+    );
 
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (!mounted) return;
     setState(() => isLoading = false);
   }
 
@@ -988,10 +1167,21 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
 
   @override
   void dispose() {
-    colorsController.dispose();
-    sizesController.dispose();
     imageUrlController.dispose();
     super.dispose();
+  }
+
+  void _updateInStock() {
+    int totalQty = 0;
+    (productData['variants'] as Map<String, Map<String, int>>).forEach((
+      color,
+      sizes,
+    ) {
+      sizes.forEach((size, qty) {
+        totalQty += qty;
+      });
+    });
+    productData['inStock'] = totalQty > 0;
   }
 
   @override
@@ -1190,7 +1380,7 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
 
                           /// 💰 Price & Stock
                           Text(
-                            "Pricing & Stock",
+                            "Price & SKU Details",
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 0.045 * w,
@@ -1203,50 +1393,80 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
                             w,
                             isNumber: true,
                           ),
-                          buildTextField(
-                            'Quantity',
-                            'quantity',
-                            w,
-                            isNumber: true,
-                          ),
+
                           buildTextField('SKU', 'sku', w),
 
                           SizedBox(height: 0.025 * h),
 
                           /// 🎨 Colors & Sizes
+                          SizedBox(height: 0.025 * h),
                           Text(
-                            "Attributes",
+                            "Variants (Color -> Sizes & Quantity)",
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 0.045 * w,
                             ),
                           ),
                           SizedBox(height: 0.01 * h),
-                          TextFormField(
-                            controller: colorsController,
-                            decoration: InputDecoration(
-                              labelText: 'Colors (comma-separated HEX)',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[50],
-                            ),
-                          ),
-                          SizedBox(height: 0.01 * h),
-                          TextFormField(
-                            controller: sizesController,
-                            decoration: InputDecoration(
-                              labelText: 'Sizes (comma-separated numbers)',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[50],
-                            ),
-                          ),
 
-                          SizedBox(height: 0.025 * h),
+                          Column(
+                            children: [
+                              for (var colorEntry
+                                  in productData['variants'].entries.toList())
+                                VariantCard(
+                                  color: colorEntry.key,
+                                  sizesMap: Map<String, int>.from(
+                                    colorEntry.value,
+                                  ),
+                                  onUpdate: (newSizes) {
+                                    setState(() {
+                                      productData['variants'][colorEntry.key] =
+                                          newSizes;
+                                      _updateInStock();
+                                    });
+                                  },
+
+                                  onDelete: () {
+                                    setState(() {
+                                      productData['variants'].remove(
+                                        colorEntry.key,
+                                      );
+                                    });
+                                  },
+                                ),
+
+                              SizedBox(height: 0.01 * h),
+
+                              // Add new color button
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final result = await pickColorDialog(context);
+                                  if (result != null) {
+                                    final color = result['color'] as String;
+                                    final sizes = Map<String, int>.from(
+                                      result['sizes'],
+                                    );
+
+                                    // Ensure variants map exists
+                                    if (productData['variants'] == null ||
+                                        productData['variants'] is! Map) {
+                                      productData['variants'] =
+                                          <String, Map<String, int>>{};
+                                    }
+
+                                    setState(() {
+                                      // Add or replace the color entry
+                                      productData['variants'][color] = sizes;
+                                      _updateInStock();
+                                    });
+                                  }
+                                },
+
+                                icon: Icon(Icons.add),
+                                label: Text("Add Color"),
+                              ),
+                            ],
+                          ),
 
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
@@ -1295,6 +1515,173 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
                     ),
                   ),
                 ),
+      ),
+    );
+  }
+}
+
+class VariantCard extends StatefulWidget {
+  final String color;
+  final Map<String, int> sizesMap;
+  final Function(Map<String, int>) onUpdate;
+  final VoidCallback onDelete;
+
+  const VariantCard({
+    super.key,
+    required this.color,
+    required this.sizesMap,
+    required this.onUpdate,
+    required this.onDelete,
+  });
+
+  @override
+  State<VariantCard> createState() => _VariantCardState();
+}
+
+class _VariantCardState extends State<VariantCard> {
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final h = MediaQuery.of(context).size.height;
+
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 0.01 * h),
+      child: Padding(
+        padding: EdgeInsets.all(0.02 * w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  color: Color(
+                    int.parse(widget.color.replaceFirst('#', '0xff')),
+                  ),
+                ),
+
+                SizedBox(width: 8),
+                Text(
+                  widget.color,
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Spacer(),
+                IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: widget.onDelete,
+                ),
+              ],
+            ),
+            Column(
+              children: [
+                for (var entry in widget.sizesMap.entries)
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 60,
+                        child: TextFormField(
+                          initialValue: entry.key,
+                          decoration: InputDecoration(labelText: 'Size'),
+                          keyboardType: TextInputType.number,
+                          onChanged: (val) {
+                            final newSizes = Map<String, int>.from(
+                              widget.sizesMap,
+                            );
+                            final qty = newSizes[entry.key]!;
+                            newSizes.remove(entry.key);
+                            newSizes[val] = qty;
+                            if (!mounted) return; // ✅ add this
+                            widget.onUpdate(newSizes);
+                          },
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      SizedBox(
+                        width: 80,
+                        child: TextFormField(
+                          initialValue: entry.value.toString(),
+                          decoration: InputDecoration(labelText: 'Qty'),
+                          keyboardType: TextInputType.number,
+                          onChanged: (val) {
+                            final newSizes = Map<String, int>.from(
+                              widget.sizesMap,
+                            );
+                            newSizes[entry.key] = int.tryParse(val) ?? 0;
+                            widget.onUpdate(newSizes);
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.remove_circle, color: Colors.red),
+                        onPressed: () {
+                          final newSizes = Map<String, int>.from(
+                            widget.sizesMap,
+                          );
+                          newSizes.remove(entry.key);
+                          widget.onUpdate(newSizes);
+                        },
+                      ),
+                    ],
+                  ),
+                SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final sizeController = TextEditingController();
+                    final qtyController = TextEditingController();
+                    await showDialog(
+                      context: context,
+                      builder:
+                          (_) => AlertDialog(
+                            title: Text('Add Size & Quantity'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextField(
+                                  controller: sizeController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Size',
+                                  ),
+                                ),
+                                TextField(
+                                  controller: qtyController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Quantity',
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  if (sizeController.text.isNotEmpty) {
+                                    final newSizes = Map<String, int>.from(
+                                      widget.sizesMap,
+                                    );
+                                    newSizes[sizeController.text] =
+                                        int.tryParse(qtyController.text) ?? 0;
+                                    widget.onUpdate(newSizes);
+                                  }
+                                  Navigator.pop(context);
+                                },
+                                child: Text('Add'),
+                              ),
+                            ],
+                          ),
+                    );
+                  },
+                  icon: Icon(Icons.add),
+                  label: Text('Add Size'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
