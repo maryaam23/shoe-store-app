@@ -1,209 +1,144 @@
 import 'package:flutter/material.dart';
-
-void main() => runApp(const AdminProfilePage());
+import 'package:firebase_auth/firebase_auth.dart';
+import 'users_mangment_page.dart';
+import 'report_page.dart';
+import 'package:shoe_store_app/User_Pages/login_page.dart';
 
 class AdminProfilePage extends StatelessWidget {
   const AdminProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
         backgroundColor: Colors.grey[50],
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.grey[50],
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Color(0xFF0d141c)),
-                      onPressed: () {},
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Admin Profile',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Color(0xFF0d141c),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 48), // placeholder to center title
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Profile Info
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 64,
-                    backgroundImage: NetworkImage(
-                        "https://lh3.googleusercontent.com/aida-public/AB6AXuBOCQ2cEYrJ7vVqtoE_Jk961EPKaZDm_ELcXTlr5pdydBxYl0asGdDcJ6M-C5TTnOfJUjho7nyEWRVPuMsDc22w2rBnSBNURGczS-MG2bhUihOQFwzbnJwwSyeHgafGSRk0OLvNqoz3XI1PO0CEA4skn7xgLW4OXBxNfLxzdG4jCF2s9xt3g-OtkM6BjKNuaxx0rAjmQY30S20xKP-sL9pscSGXv7cuzsZkxeiF45P4jsU_2zUhHH6-ycoPs1IgCRG9sIltTGl_6L-R"),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Ethan Carter',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0d141c)),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'ethan.carter@email.com',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF49709c)),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    '+1 (555) 123-4567',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF49709c)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // Account Input
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Account',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0d141c)),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Enter account info',
-                        filled: true,
-                        fillColor: Color(0xFFe7edf4),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.all(16),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Preferences',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0d141c)),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Notifications',
-                            style: TextStyle(
-                                fontSize: 16, color: Color(0xFF0d141c))),
-                        Switch(
-                          value: true,
-                          onChanged: (val) {},
-                          activeColor: Color(0xFF0d78f2),
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Professional Enhancements',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0d141c)),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Dark Mode',
-                            style: TextStyle(
-                                fontSize: 16, color: Color(0xFF0d141c))),
-                        Switch(
-                          value: false,
-                          onChanged: (val) {},
-                          activeColor: Color(0xFF0d78f2),
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Activity Log',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0d141c)),
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      children: [
-                        activityItem('Product added: Air Zoom Pegasus 38',
-                            '2024-01-20 14:30'),
-                        activityItem('Inventory updated: Air Zoom Pegasus 38',
-                            '2024-01-19 11:15'),
-                        activityItem('Order processed: #12345', '2024-01-18 09:45'),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-            ],
+        elevation: 0,
+        title: const Text(
+          'Admin Profile',
+          style: TextStyle(
+            color: Color(0xFF0d141c),
+            fontWeight: FontWeight.bold,
           ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          selectedItemColor: const Color(0xFF0d141c),
-          unselectedItemColor: const Color(0xFF49709c),
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.sports_handball), label: 'Products'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.receipt_long), label: 'Orders'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.person), label: 'Profile'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          children: [
+            // Logo
+            Center(
+              child: CircleAvatar(
+                radius: 64,
+                backgroundImage: NetworkImage(
+                    "https://your-logo-url.com/logo.png"), // replace with your logo
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Admin Name
+            Center(
+              child: Text(
+                user?.displayName ?? 'Admin Name',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0d141c),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Admin Email
+            Center(
+              child: Text(
+                user?.email ?? 'admin@example.com',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF49709c),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Action Buttons
+            _actionButton(
+              context,
+              icon: Icons.person_add,
+              label: 'Add Admin',
+              onTap: () {
+                // Navigate to Add Admin Page
+              },
+            ),
+            _actionButton(
+              context,
+              icon: Icons.group,
+              label: 'Users Page',
+              onTap: () {
+                Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UsersManagementPage()),
+                    (route) => false,
+                  );
+              },
+            ),
+            _actionButton(
+              context,
+              icon: Icons.bar_chart,
+              label: 'Reports Page',
+              onTap: () {
+                Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
+                    (route) => false,
+                  );
+              },
+            ),
+            _actionButton(
+              context,
+              icon: Icons.logout,
+              label: 'Logout',
+              onTap: () async {
+                  await FirebaseAuth.instance.signOut(); // 👈 actually sign out
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    (route) => false,
+                  );
+                },
+              color: Colors.red,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget activityItem(String title, String date) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-          color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF0d141c))),
-          const SizedBox(height: 2),
-          Text(date,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
-                  color: Color(0xFF49709c))),
-        ],
+  Widget _actionButton(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+      Color color = const Color(0xFF0D78F2)}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: ElevatedButton.icon(
+        icon: Icon(icon, size: 28),
+        label: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onPressed: onTap,
       ),
     );
   }

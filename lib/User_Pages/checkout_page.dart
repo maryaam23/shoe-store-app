@@ -661,9 +661,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     if (!_isValidExpiry(expiryCtrl.text)) {
                       _showError("Invalid or expired date (MM/YY).");
                       return;
-
-
-                      
                     }
                     if (!_isValidCVV(cvvCtrl.text)) {
                       _showError("Invalid CVV.");
@@ -687,6 +684,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   final orderNumber = _generateOrderNumber();
                   final dateNow = DateTime.now();
 
+                  final userDoc =
+                      await FirebaseFirestore.instance
+                          .collection("users")
+                          .doc(user!.uid)
+                          .get();
+
+                  final customerName =
+                      userDoc.data()?['fullName'] ?? "Customer";
+
                   final orderData = {
                     "orderNumber": orderNumber,
                     "orderDate": dateNow,
@@ -698,6 +704,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     "phone": phoneCtrl.text.trim(),
                     "paymentMethod": selectedPayment,
                     "notes": notesController.text,
+                    "userId": user!.uid, // 🔹 add userId
+                    "customer": customerName, // 🔹 add customer name
                     "items":
                         cartDocs
                             .map(

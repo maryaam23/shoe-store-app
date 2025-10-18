@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shoe_store_app/Admin_Pages/orders_mangment_page.dart';
 import 'package:shoe_store_app/Admin_Pages/product_mangment_page.dart';
 import 'package:shoe_store_app/Admin_Pages/users_mangment_page.dart';
+import 'package:shoe_store_app/Admin_Pages/admin_profile_page.dart';
 import 'package:shoe_store_app/User_Pages/login_page.dart'; // make sure you import LoginPage
 
 void main() => runApp(AdminOverviewApp());
@@ -30,7 +31,7 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
     AdminOverviewScreenBody(), // main overview content
     OrderManagementScreen(),
     ProductManagementScreen(),
-    UsersManagementPage(),
+    AdminProfilePage(),
   ];
 
   @override
@@ -54,7 +55,7 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
             icon: Icon(Icons.shopping_bag),
             label: "Products",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Profile"),
         ],
       ),
     );
