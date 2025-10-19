@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'admin_profile_page.dart';
 
 class AddAdminPage extends StatefulWidget {
   const AddAdminPage({super.key});
@@ -15,6 +14,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
   final _formKey = GlobalKey<FormState>();
   final _controllerEmail = TextEditingController();
   final _controllerPassword = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final FocusNode _focusNodePassword = FocusNode();
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -58,6 +58,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
           .collection('users')
           .doc(newUser.uid)
           .set({
+            "fullName": _nameController.text.trim(),
             "email": newUser.email,
             "role": "admin",
             "createdAt": FieldValue.serverTimestamp(),
@@ -75,6 +76,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
       // Clear the text fields
       _controllerEmail.clear();
       _controllerPassword.clear();
+      _nameController.clear();
 
       // Sign out secondary app
       await auth.signOut();
@@ -95,7 +97,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final double buttonHeight = size.height * 0.065;
+    final double buttonHeight = size.height * 0.05;
     final double buttonFontSize = size.width * 0.035;
     final double inputFontSize = size.width * 0.045;
     final double spacing = size.height * 0.02;
@@ -182,6 +184,39 @@ class _AddAdminPageState extends State<AddAdminPage> {
                     key: _formKey,
                     child: Column(
                       children: [
+                        // Full Name field
+                        TextFormField(
+                          controller: _nameController,
+                          style: TextStyle(fontSize: inputFontSize),
+                          decoration: InputDecoration(
+                            labelText: "Full Name",
+                            prefixIcon: Icon(
+                              Icons.badge_outlined,
+                              size: inputFontSize * 1.2,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(
+                                size.width * 0.04,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(
+                                size.width * 0.04,
+                              ),
+                              borderSide: const BorderSide(
+                                color: Color.fromARGB(255, 1, 1, 1),
+                              ),
+                            ),
+                          ),
+                          textInputAction: TextInputAction.next,
+                          validator: (String? value) {
+                            if (value == null || value.isEmpty) {
+                              return "Please enter full name.";
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: spacing),
                         // Username field
                         TextFormField(
                           controller: _controllerEmail,

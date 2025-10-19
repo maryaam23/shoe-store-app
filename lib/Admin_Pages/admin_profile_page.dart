@@ -78,7 +78,7 @@ class AdminProfilePage extends StatelessWidget {
             _actionButton(
               context,
               icon: Icons.group,
-              label: 'Users Page',
+              label: 'Users Management',
               onTap: () {
                 Navigator.push(
                     context,
