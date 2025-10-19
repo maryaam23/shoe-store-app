@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shoe_store_app/User_Pages/product_page.dart';
 import 'package:shoe_store_app/firestore_service.dart';
 import 'checkout_page.dart';
+import 'dart:io';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -54,8 +55,20 @@ class _CartPageState extends State<CartPage> {
       return;
     }
 
-    final availableStock = ((productDoc["quantity"] ?? 0) as num).toInt();
-    print("Available stock for product: $availableStock");
+    final variantsRaw = productDoc['variants'] as Map<dynamic, dynamic>? ?? {};
+    final variants = <String, Map<String, dynamic>>{};
+    variantsRaw.forEach((key, value) {
+      variants[key.toString()] = Map<String, dynamic>.from(value);
+    });
+
+    int availableStock = 0;
+    for (var colorMap in variants.values) {
+      if (colorMap is Map) {
+        for (var qty in colorMap.values) {
+          availableStock += (qty as num).toInt();
+        }
+      }
+    }
 
     // Step 3: Check if adding exceeds stock
     if (totalProductQtyInCart < availableStock) {
@@ -83,6 +96,40 @@ class _CartPageState extends State<CartPage> {
     print("------------------------------");
   }
 
+  Future<bool> _decreaseProductStock(
+    String productId,
+    String colorHex,
+    int size,
+    int qtyToDecrease,
+  ) async {
+    final productRef = FirebaseFirestore.instance
+        .collection('Nproducts')
+        .doc(productId);
+    final productSnap = await productRef.get();
+    if (!productSnap.exists) return false;
+
+    final variantsRaw = productSnap['variants'] as Map<dynamic, dynamic>? ?? {};
+    final variants = <String, Map<String, dynamic>>{};
+    variantsRaw.forEach((key, value) {
+      variants[key.toString()] = Map<String, dynamic>.from(value);
+    });
+
+    final sizeStock =
+        (variants[colorHex]?[size.toString()] as num?)?.toInt() ?? 0;
+
+    if (sizeStock < qtyToDecrease) {
+      return false; // Not enough stock
+    }
+
+    // Decrease stock
+    variants[colorHex]?[size.toString()] = sizeStock - qtyToDecrease;
+
+    // Save back to Firestore
+    await productRef.update({'variants': variants});
+
+    return true;
+  }
+
   void _decreaseQty(String cartId, int currentQty) {
     if (currentQty > 1) {
       FirebaseFirestore.instance
@@ -94,22 +141,25 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-  void _updateSize(String cartId, int newSize) {
-    FirebaseFirestore.instance
+ Future<void> _updateColor(String cartId, String newColor) {
+  // normalize color to lowercase and match Nproducts key format
+  final normalizedColor = newColor.toLowerCase().substring(0, 7); // "#RRGGBB"
+  return FirebaseFirestore.instance
+      .collection("users")
+      .doc(user!.uid)
+      .collection("cart")
+      .doc(cartId)
+      .update({"color": normalizedColor});
+}
+
+
+  Future<void> _updateSize(String cartId, int newSize) {
+    return FirebaseFirestore.instance
         .collection("users")
         .doc(user!.uid)
         .collection("cart")
         .doc(cartId)
         .update({"size": newSize});
-  }
-
-  void _updateColor(String cartId, int newColor) {
-    FirebaseFirestore.instance
-        .collection("users")
-        .doc(user!.uid)
-        .collection("cart")
-        .doc(cartId)
-        .update({"color": newColor});
   }
 
   double _calculateSubtotal(List<QueryDocumentSnapshot> cartDocs) {
@@ -119,76 +169,171 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Future<void> _selectSize(String cartId, List<dynamic> sizes) async {
-    int? selectedSize = await showDialog<int>(
+  Future<void> _selectColorAndSize(
+    String cartId,
+    Map<String, dynamic> variants,
+    String currentColor,
+    int currentSize,
+  ) async {
+    String selectedColor = currentColor;
+    int selectedSize = currentSize;
+
+    // Find first available color and size if current is out of stock
+    // Check if current selection is valid
+    final currentSizesMap = variants[selectedColor] as Map<String, dynamic>?;
+
+    final currentQty =
+        (currentSizesMap?[selectedSize.toString()] as num?)?.toInt() ?? 0;
+
+    if (currentQty <= 0) {
+      // Current selection out of stock → pick first available
+      bool found = false;
+      for (var color in variants.keys) {
+        final sizesMap = variants[color] as Map<String, dynamic>;
+        final availableSizes =
+            sizesMap.entries.where((e) => (e.value as num) > 0).toList();
+        if (availableSizes.isNotEmpty) {
+          selectedColor = color;
+          selectedSize = int.tryParse(availableSizes.first.key) ?? 0;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        // No stock at all → leave as is
+      }
+    }
+    // Otherwise, keep cart item's original color & size
+
+    await showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text("Select Size"),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: sizes.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(sizes[index].toString()),
-                    onTap: () {
-                      Navigator.pop(context, sizes[index]);
-                    },
-                  );
-                },
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final colorKeys = variants.keys.toList();
+            final sizesForSelectedColor =
+                variants[selectedColor]?.keys.toList() ?? [];
+
+            return AlertDialog(
+              title: const Text("Select Color and Size"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Color picker
+                  Wrap(
+                    spacing: 8,
+                    children:
+                        colorKeys.map<Widget>((colorHex) {
+                          final sizesMap =
+                              variants[colorHex] as Map<String, dynamic>;
+                          final allZero = sizesMap.values.every(
+                            (qty) => (qty as num) <= 0,
+                          );
+
+                          return GestureDetector(
+                            onTap:
+                                allZero
+                                    ? null
+                                    : () => setState(() {
+                                      selectedColor = colorHex;
+
+                                      // Automatically pick first available size
+                                      final availableSizes =
+                                          sizesMap.entries
+                                              .where(
+                                                (e) => (e.value as num) > 0,
+                                              )
+                                              .toList();
+                                      selectedSize =
+                                          availableSizes.isNotEmpty
+                                              ? int.tryParse(
+                                                    availableSizes.first.key,
+                                                  ) ??
+                                                  0
+                                              : 0;
+                                    }),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: _colorFromHex(colorHex),
+                                  child:
+                                      allZero
+                                          ? Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(
+                                                0.7,
+                                              ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          )
+                                          : null,
+                                ),
+                                if (allZero)
+                                  const Icon(
+                                    Icons.block,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                if (selectedColor == colorHex)
+                                  const Icon(Icons.check, color: Colors.white),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Size picker
+                  Wrap(
+                    spacing: 8,
+                    children:
+                        sizesForSelectedColor.map<Widget>((size) {
+                          final sizeInt = int.tryParse(size.toString()) ?? 0;
+                          final qty =
+                              (variants[selectedColor][size] as num?)
+                                  ?.toInt() ??
+                              0;
+
+                          return ChoiceChip(
+                            label: Text("$sizeInt"),
+                            selected: selectedSize == sizeInt,
+                            onSelected:
+                                qty > 0
+                                    ? (selected) {
+                                      setState(() {
+                                        selectedSize = sizeInt;
+                                      });
+                                    }
+                                    : null,
+                            disabledColor: Colors.grey.shade300,
+                            selectedColor: Colors.blue,
+                          );
+                        }).toList(),
+                  ),
+                ],
               ),
-            ),
-          ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    // Update Firestore first
+                    await _updateColor(cartId, selectedColor);
+                    await _updateSize(cartId, selectedSize);
+
+                    // Then close dialog
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Confirm"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
-
-    if (selectedSize != null) {
-      _updateSize(cartId, selectedSize);
-    }
-  }
-
-  Future<void> _selectColor(String cartId, List<dynamic> colors) async {
-    int? selectedColor = await showDialog<int>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text("Select Color"),
-            content: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children:
-                  colors.map<Widget>((colorValue) {
-                    return GestureDetector(
-                      onTap:
-                          () => Navigator.pop(
-                            context,
-                            int.parse(
-                              colorValue.toString().replaceFirst("#", "0xFF"),
-                            ),
-                          ),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Color(
-                            int.parse(
-                              colorValue.toString().replaceFirst("#", "0xFF"),
-                            ),
-                          ),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey.shade400),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-            ),
-          ),
-    );
-
-    if (selectedColor != null) {
-      _updateColor(cartId, selectedColor);
-    }
   }
 
   @override
@@ -261,16 +406,47 @@ class _CartPageState extends State<CartPage> {
                                   );
                                 }
 
-                                final productData = productSnapshot.data!;
-                                final sizes = List<dynamic>.from(
-                                  productData['sizes'] ?? [],
-                                );
-                                final colors = List<dynamic>.from(
-                                  productData['colors'] ?? [],
-                                );
+                                final productDoc = productSnapshot.data!;
+                                if (!productDoc.exists) {
+                                  return ListTile(
+                                    title: Text(
+                                      "Product not found",
+                                      style: TextStyle(color: Colors.redAccent),
+                                    ),
+                                    subtitle: Text(
+                                      "It may have been deleted from the store.",
+                                    ),
+                                  );
+                                }
 
-                                final availableStock =
-                                    productData['quantity'] ?? 0;
+                                final variants =
+                                    productDoc['variants']
+                                        as Map<String, dynamic>? ??
+                                    {};
+
+                                final colors =
+                                    variants.keys
+                                        .toList(); // color hex list like ["#ff00ff", "#ffffff"]
+
+                                // Flatten all available sizes (from all colors)
+                                final Set<dynamic> sizesSet = {};
+                                for (var colorMap in variants.values) {
+                                  if (colorMap is Map) {
+                                    sizesSet.addAll(colorMap.keys);
+                                  }
+                                }
+                                final sizes = sizesSet.toList()..sort();
+
+                                // For total stock (sum of all sizes in all colors)
+                                int availableStock = 0;
+                                for (var colorMap in variants.values) {
+                                  if (colorMap is Map) {
+                                    for (var qty in colorMap.values) {
+                                      availableStock += (qty as num).toInt();
+                                    }
+                                  }
+                                }
+
                                 final cartQty = cartItem['quantity'];
                                 final isOutOfStock = availableStock == 0;
                                 final atMaxStock = cartQty >= availableStock;
@@ -321,27 +497,57 @@ class _CartPageState extends State<CartPage> {
                                                               ) &&
                                                           cartItem["image"] !=
                                                               null)
-                                                      ? Image.network(
-                                                        cartItem["image"],
-                                                        width: w * 0.22,
-                                                        height: w * 0.22,
-                                                        fit: BoxFit.cover,
-                                                        color:
-                                                            isOutOfStock
-                                                                ? Colors.black12
-                                                                : null,
-                                                        colorBlendMode:
-                                                            isOutOfStock
-                                                                ? BlendMode
-                                                                    .darken
-                                                                : null,
-                                                      )
+                                                      ? (() {
+                                                        final imagePath =
+                                                            cartItem["image"]
+                                                                .toString();
+
+                                                        if (imagePath
+                                                            .startsWith(
+                                                              "http",
+                                                            )) {
+                                                          return Image.network(
+                                                            imagePath,
+                                                            width: w * 0.22,
+                                                            height: w * 0.22,
+                                                            fit: BoxFit.cover,
+                                                            color:
+                                                                isOutOfStock
+                                                                    ? Colors
+                                                                        .black12
+                                                                    : null,
+                                                            colorBlendMode:
+                                                                isOutOfStock
+                                                                    ? BlendMode
+                                                                        .darken
+                                                                    : null,
+                                                          );
+                                                        } else {
+                                                          return Image.file(
+                                                            File(imagePath),
+                                                            width: w * 0.22,
+                                                            height: w * 0.22,
+                                                            fit: BoxFit.cover,
+                                                            color:
+                                                                isOutOfStock
+                                                                    ? Colors
+                                                                        .black12
+                                                                    : null,
+                                                            colorBlendMode:
+                                                                isOutOfStock
+                                                                    ? BlendMode
+                                                                        .darken
+                                                                    : null,
+                                                          );
+                                                        }
+                                                      })()
                                                       : Icon(
                                                         Icons.image,
                                                         size: w * 0.18,
                                                       ),
                                             ),
                                           ),
+
                                           SizedBox(width: w * 0.01),
 
                                           // Product info
@@ -376,56 +582,34 @@ class _CartPageState extends State<CartPage> {
                                                 // Size
                                                 GestureDetector(
                                                   onTap:
-                                                      () => _selectSize(
+                                                      () => _selectColorAndSize(
                                                         cartId,
-                                                        sizes,
-                                                      ),
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 4,
-                                                        ),
-                                                    child: Text(
-                                                      "Size: ${cartItem["size"]}",
-                                                      style: GoogleFonts.inter(
-                                                        fontSize:
-                                                            13 * textScale,
-                                                        color: Colors.black87,
-                                                        decoration:
-                                                            TextDecoration
-                                                                .underline,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-
-                                                // Color
-                                                GestureDetector(
-                                                  onTap:
-                                                      () => _selectColor(
-                                                        cartId,
-                                                        colors,
+                                                        variants,
+                                                        cartItem["color"] ??
+                                                            "#FFFFFF",
+                                                        cartItem["size"] ?? 0,
                                                       ),
                                                   child: Row(
                                                     children: [
                                                       Text(
-                                                        "Color: ",
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize:
-                                                                  13 *
-                                                                  textScale,
-                                                              color:
-                                                                  Colors
-                                                                      .black87,
-                                                            ),
+                                                        "Color & Size",
+                                                        style: GoogleFonts.inter(
+                                                          fontSize:
+                                                              13 * textScale,
+                                                          decoration:
+                                                              TextDecoration
+                                                                  .underline,
+                                                          color: Colors.black87,
+                                                        ),
                                                       ),
+                                                      const SizedBox(width: 8),
                                                       Container(
                                                         width: 16,
                                                         height: 16,
                                                         decoration: BoxDecoration(
-                                                          color: Color(
-                                                            cartItem["color"],
+                                                          color: _colorFromHex(
+                                                            cartItem["color"] ??
+                                                                "#FFFFFF",
                                                           ),
                                                           shape:
                                                               BoxShape.circle,
@@ -436,6 +620,16 @@ class _CartPageState extends State<CartPage> {
                                                                     .shade400,
                                                           ),
                                                         ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        "${cartItem["size"]}",
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize:
+                                                                  13 *
+                                                                  textScale,
+                                                            ),
                                                       ),
                                                     ],
                                                   ),
@@ -642,67 +836,63 @@ class _CartPageState extends State<CartPage> {
 
                                   final cartDocs = snapshot.docs;
 
+                                  // -------------------- CHECK STOCK --------------------
                                   bool hasProblem = false;
                                   List<String> problemMessages = [];
-                                  Set<String> processedProductIds =
-                                      {}; // Track already checked products
 
-                                  for (var doc in cartDocs) {
-                                    final productId = doc["id"];
-
-                                    if (processedProductIds.contains(productId))
-                                      continue; // Skip duplicates
-                                    processedProductIds.add(productId);
+                                  for (var cartItem in cartDocs) {
+                                    final productId = cartItem['id'];
+                                    final color =
+                                        (cartItem['color'] ?? '')
+                                            .toString()
+                                            .toLowerCase();
+                                    final size = cartItem['size'] ?? 0;
+                                    final qty = cartItem['quantity'] ?? 0;
 
                                     final productSnap =
                                         await FirebaseFirestore.instance
-                                            .collection("Nproducts")
-                                            .doc(productId)
+                                            .collection('Nproducts')
+                                            .doc(cartItem['id'])
                                             .get();
 
                                     if (!productSnap.exists) continue;
 
-                                    String productName =
-                                        productSnap["name"] ?? "Product";
-                                    int stock =
-                                        ((productSnap["quantity"] ?? 0) as num)
-                                            .toInt();
+                                    final variants = Map<String, dynamic>.from(
+                                      productSnap['variants'] ?? {},
+                                    );
 
-                                    // Total quantity of this product in cart
-                                    final cartSnapshot =
-                                        await FirebaseFirestore.instance
-                                            .collection("users")
-                                            .doc(user!.uid)
-                                            .collection("cart")
-                                            .where("id", isEqualTo: productId)
-                                            .get();
+                                    // Normalize variant keys
+                                    final normalizedVariants =
+                                        <String, Map<String, dynamic>>{};
+                                    variants.forEach((key, value) {
+                                      normalizedVariants[key.toLowerCase()] =
+                                          Map<String, dynamic>.from(value);
+                                    });
 
-                                    int totalQtyInCart = 0;
-                                    for (var cartDoc in cartSnapshot.docs) {
-                                      totalQtyInCart +=
-                                          ((cartDoc["quantity"] ?? 0) as num)
-                                              .toInt();
-                                    }
+                                    final sizeStock =
+                                        (normalizedVariants[color]?[size
+                                                    .toString()]
+                                                as num?)
+                                            ?.toInt() ??
+                                        0;
 
-                                    if (stock == 0) {
+                                    if (sizeStock < qty) {
                                       hasProblem = true;
-                                      problemMessages.add(
-                                        "$productName is out of stock. Please remove it or move it to your wishlist.",
-                                      );
-                                    } else if (totalQtyInCart > stock) {
-                                      hasProblem = true;
-                                      int exceedQty = totalQtyInCart - stock;
-                                      problemMessages.add(
-                                        "$productName quantity exceeds stock by $exceedQty. Available: $stock, In Cart: $totalQtyInCart.",
-                                      );
+                                      if (sizeStock == 0) {
+                                        problemMessages.add(
+                                          "${cartItem['name']} is out of stock for color $color, size $size.",
+                                        );
+                                      } else {
+                                        problemMessages.add(
+                                          "${cartItem['name']} has only $sizeStock items available for color $color, size $size.",
+                                        );
+                                      }
                                     }
                                   }
-
                                   if (hasProblem) {
                                     final maxHeight =
                                         MediaQuery.of(context).size.height *
                                         0.5;
-
                                     showDialog(
                                       context: context,
                                       builder:
@@ -747,14 +937,61 @@ class _CartPageState extends State<CartPage> {
                                             ],
                                           ),
                                     );
-                                  } else {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const CheckoutPage(),
-                                      ),
-                                    );
+                                    return;
                                   }
+
+                                  // -------------------- DEDUCT STOCK & CLEAR CART --------------------
+                                  for (var cartItem in cartDocs) {
+                                    final productId = cartItem['id'];
+                                    final color = cartItem['color'] ?? '';
+                                    final size = cartItem['size'] ?? 0;
+                                    final qty = cartItem['quantity'] ?? 0;
+
+                                    // Update stock in Nproducts
+                                    final productRef = FirebaseFirestore
+                                        .instance
+                                        .collection('Nproducts')
+                                        .doc(productId);
+
+                                    await FirebaseFirestore.instance
+                                        .runTransaction((transaction) async {
+                                          final snapshot = await transaction
+                                              .get(productRef);
+                                          if (!snapshot.exists) return;
+
+                                          final variants =
+                                              Map<String, dynamic>.from(
+                                                snapshot['variants'] ?? {},
+                                              );
+                                          final colorMap =
+                                              Map<String, dynamic>.from(
+                                                variants[color] ?? {},
+                                              );
+
+                                          final currentStock =
+                                              (colorMap[size.toString()]
+                                                      as num?)
+                                                  ?.toInt() ??
+                                              0;
+                                          colorMap[size.toString()] =
+                                              currentStock - qty;
+
+                                          variants[color] = colorMap;
+                                          transaction.update(productRef, {
+                                            'variants': variants,
+                                          });
+                                        });
+
+                                    // Remove item from cart
+                                  }
+
+                                  // Navigate to checkout
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const CheckoutPage(),
+                                    ),
+                                  );
                                 },
 
                                 child: Text(
@@ -775,6 +1012,13 @@ class _CartPageState extends State<CartPage> {
                 },
               ),
     );
+  }
+
+  Color _colorFromHex(String hexColor) {
+    final buffer = StringBuffer();
+    if (hexColor.length == 6 || hexColor.length == 7) buffer.write('ff');
+    buffer.write(hexColor.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
   }
 
   void _removeFromCart(String cartId) {

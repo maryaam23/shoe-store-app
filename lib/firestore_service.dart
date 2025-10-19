@@ -41,12 +41,13 @@ class FirestoreService {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
 
-    final doc = await _db
-        .collection("users")
-        .doc(user.uid)
-        .collection("cart")
-        .doc(productId)
-        .get();
+    final doc =
+        await _db
+            .collection("users")
+            .doc(user.uid)
+            .collection("cart")
+            .doc(productId)
+            .get();
 
     return doc.exists;
   }
@@ -92,52 +93,50 @@ class FirestoreService {
   }
 
   // ------------------ 🆕 ADD OR UPDATE CART ITEM ------------------ //
-  static Future<void> addOrUpdateCart(
-    Product product, {
-    required int size,
-    required Color color,
-  }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+static Future<void> addOrUpdateCart(
+  Product product, {
+  required int size,
+  required Color color,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
 
-    final userId = user.uid;
-    final colorValue = color.value;
+  final userId = user.uid;
 
-    // Check if same product with same size & color already exists
-    final query = await _db
-        .collection('users')
-        .doc(userId)
-        .collection('cart')
-        .where('id', isEqualTo: product.id)
-        .where('size', isEqualTo: size)
-        .where('color', isEqualTo: colorValue)
-        .limit(1)
-        .get();
+  // ✅ Normalize color to match Nproducts
+  final colorHex =
+      '#${color.value.toRadixString(16).padLeft(8, '0').substring(2).toLowerCase()}';
 
-    if (query.docs.isNotEmpty) {
-      // 🟢 If same item exists → increase quantity
-      final doc = query.docs.first;
-      await doc.reference.update({
-        'quantity': FieldValue.increment(1),
-      });
-    } else {
-      // 🟧 Else add new entry
-      await _db
-          .collection('users')
-          .doc(userId)
-          .collection('cart')
-          .add({
-        'id': product.id,
-        'name': product.name,
-        'price': product.price,
-        'image': product.image,
-        'size': size,
-        'color': colorValue,
-        'quantity': 1,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
+  // Check if same product with same size & color already exists
+  final query = await _db
+      .collection('users')
+      .doc(userId)
+      .collection('cart')
+      .where('id', isEqualTo: product.id)
+      .where('size', isEqualTo: size)
+      .where('color', isEqualTo: colorHex)
+      .limit(1)
+      .get();
+
+  if (query.docs.isNotEmpty) {
+    // 🟢 If same item exists → increase quantity
+    final doc = query.docs.first;
+    await doc.reference.update({'quantity': FieldValue.increment(1)});
+  } else {
+    // 🟧 Else add new entry
+    await _db.collection('users').doc(userId).collection('cart').add({
+      'id': product.id,
+      'name': product.name,
+      'price': product.price,
+      'image': product.image,
+      'size': size,
+      'color': colorHex, // ✅ normalized color
+      'quantity': 1,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
+}
+
 
   // ------------------ WISHLIST ------------------ //
   static Future<void> addToWishlist(Product product) async {
@@ -150,12 +149,12 @@ class FirestoreService {
         .collection("wishlist")
         .doc(product.id)
         .set({
-      "id": product.id,
-      "name": product.name,
-      "price": product.price,
-      "image": product.image,
-      "createdAt": FieldValue.serverTimestamp(),
-    });
+          "id": product.id,
+          "name": product.name,
+          "price": product.price,
+          "image": product.image,
+          "createdAt": FieldValue.serverTimestamp(),
+        });
   }
 
   static Future<void> removeFromWishlist(String productId) async {
@@ -174,12 +173,13 @@ class FirestoreService {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
 
-    final doc = await _db
-        .collection("users")
-        .doc(user.uid)
-        .collection("wishlist")
-        .doc(productId)
-        .get();
+    final doc =
+        await _db
+            .collection("users")
+            .doc(user.uid)
+            .collection("wishlist")
+            .doc(productId)
+            .get();
 
     return doc.exists;
   }

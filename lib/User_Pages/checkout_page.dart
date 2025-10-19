@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -512,16 +514,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       contentPadding: EdgeInsets.zero,
                       leading: ClipRRect(
                         borderRadius: BorderRadius.circular(w * 0.03),
-                        child:
-                            item["image"] != null
-                                ? Image.network(
-                                  item["image"],
-                                  width: w * 0.12,
-                                  height: w * 0.12,
-                                  fit: BoxFit.cover,
-                                )
-                                : Icon(Icons.image, size: w * 0.12),
+                        child: Builder(
+                          builder: (_) {
+                            final img = item["image"];
+                            if (img == null || img.isEmpty) {
+                              return Icon(Icons.image, size: w * 0.12);
+                            }
+                            // Check if it's a network image
+                            if (img.startsWith("http://") ||
+                                img.startsWith("https://")) {
+                              return Image.network(
+                                img,
+                                width: w * 0.12,
+                                height: w * 0.12,
+                                fit: BoxFit.cover,
+                              );
+                            } else {
+                              // Assume local file path
+                              return Image.file(
+                                File(img),
+                                width: w * 0.12,
+                                height: w * 0.12,
+                                fit: BoxFit.cover,
+                              );
+                            }
+                          },
+                        ),
                       ),
+
                       title: Text(
                         item["name"] ?? "",
                         style: GoogleFonts.inter(
@@ -566,7 +586,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     width: w * 0.04,
                                     height: w * 0.04,
                                     decoration: BoxDecoration(
-                                      color: Color(item["color"]),
+                                      color: _colorFromHex(
+                                        item["color"] ?? "#000000",
+                                      ),
+
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: Colors.grey.shade400,
@@ -714,11 +737,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 "price": doc["price"],
                                 "quantity": doc["quantity"],
                                 "image": doc["image"] ?? "",
-                                "productId": doc.id,
+                                "productId":
+                                    doc.data().containsKey("productId")
+                                        ? doc["productId"]
+                                        : doc.id,
                                 "size": doc["size"] ?? "",
-                                "color":
-                                    doc["color"] ??
-                                    0, // or keep null if no color
+                                "color": doc["color"]?.toString() ?? "#000000",
                               },
                             )
                             .toList(),
@@ -732,11 +756,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       .doc(orderNumber)
                       .set(orderData);
 
-                  // Decrease quantity in Nproducts
-                  // Decrease quantity in Nproducts
                   for (var item in cartDocs) {
+                    final data =
+                        item.data()
+                            as Map<String, dynamic>; // convert snapshot to Map
                     final productId =
-                        item["id"]; // ✅ correct: field that matches Nproducts ID
+                        data.containsKey("productId")
+                            ? data["productId"]
+                            : item.id;
+
                     final productRef = FirebaseFirestore.instance
                         .collection("Nproducts")
                         .doc(productId);
@@ -746,19 +774,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ) async {
                       final snapshot = await transaction.get(productRef);
 
-                      if (!snapshot.exists) {
-                        debugPrint(
-                          "⚠️ Product $productId not found, skipping update.",
-                        );
-                        return;
-                      }
+                      if (!snapshot.exists) return;
 
-                      final currentQty = snapshot["quantity"] ?? 0;
-                      final newQty = (currentQty - item["quantity"]).clamp(
-                        0,
-                        currentQty,
-                      );
-                      transaction.update(productRef, {"quantity": newQty});
+                     final variants = Map<String, dynamic>.from(snapshot["variants"] ?? {});
+
+
+                      final colorKey = data["color"] ?? "#000000";
+final sizeKey = data["size"]?.toString() ?? "";
+
+
+                      if (variants.containsKey(colorKey)) {
+                        final colorMap = Map<String, dynamic>.from(
+                          variants[colorKey],
+                        );
+                        final currentQty = colorMap[sizeKey] ?? 0;
+                        final newQty = max(0, currentQty - item["quantity"]);
+
+                        colorMap[sizeKey] = newQty;
+                        variants[colorKey] = colorMap;
+
+                        transaction.update(productRef, {"variants": variants});
+                      }
                     });
                   }
 
@@ -875,5 +911,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       ),
     );
+  }
+
+  Color _colorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 }

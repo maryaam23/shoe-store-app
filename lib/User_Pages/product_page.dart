@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shoe_store_app/User_Pages/product_grid.dart';
 import '../firestore_service.dart';
 import 'package:another_flushbar/flushbar.dart';
 import 'product_detailes_page.dart';
@@ -18,12 +19,11 @@ class Product {
   final String category;
   final String? brand;
   final String? clothesType;
-  final List<int>? sizes;
-  final List<Color>? colors;
   final String? description;
-  final int? quantity;
   final String? sku;
   final bool inStock;
+  final Map<String, Map<String, int>>? variants; // colorHex → { size: qty }
+  // ✅ new
 
   Product({
     required this.id,
@@ -33,12 +33,10 @@ class Product {
     required this.category,
     this.brand,
     this.clothesType,
-    this.sizes,
-    this.colors,
     this.description,
-    this.quantity,
     this.sku,
     this.inStock = true,
+    this.variants,
   });
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -49,19 +47,23 @@ class Product {
       return s.toString().replaceAll(RegExp(r'^"+|"+$'), '').trim();
     }
 
-    List<Color>? parseColors(List<dynamic>? list) {
-      if (list == null) return null;
-      return list.map((c) {
-        try {
-          return Color(
-            int.parse(
-              c.toString().replaceAll('"', '').replaceFirst('#', '0xff'),
-            ),
-          );
-        } catch (_) {
-          return Colors.black;
+    // Parse variants as Map<String, Map<String, int>>
+    Map<String, Map<String, int>>? parseVariants(Map<String, dynamic>? map) {
+      if (map == null) return null;
+      final result = <String, Map<String, int>>{};
+      map.forEach((colorKey, sizesMap) {
+        final sizeMap = <String, int>{};
+        if (sizesMap is Map) {
+          sizesMap.forEach((size, qty) {
+            final sizeStr = size.toString();
+            final qtyInt =
+                (qty is int) ? qty : int.tryParse(qty.toString()) ?? 0;
+            sizeMap[sizeStr] = qtyInt;
+          });
         }
-      }).toList();
+        result[colorKey.toString()] = sizeMap;
+      });
+      return result;
     }
 
     return Product(
@@ -81,22 +83,10 @@ class Product {
           cleanString(data['clothesType']).isNotEmpty
               ? cleanString(data['clothesType'])
               : null,
-      sizes:
-          data['sizes'] != null
-              ? List<int>.from(
-                data['sizes'].map(
-                  (e) => e is int ? e : int.tryParse(e.toString()) ?? 0,
-                ),
-              )
-              : null,
-      colors: parseColors(data['colors']),
       description: cleanString(data['description']),
-      quantity:
-          data['quantity'] != null
-              ? int.tryParse(data['quantity'].toString())
-              : null,
       sku: cleanString(data['sku']),
       inStock: data['inStock'] ?? true,
+      variants: parseVariants(data['variants'] as Map<String, dynamic>?),
     );
   }
 }
@@ -194,532 +184,12 @@ class _ProductPageState extends State<ProductPage> {
                           ? cartSnap.data!.docs.map((d) => d.id).toSet()
                           : <String>{};
 
-                  return GridView.builder(
-                    padding: EdgeInsets.all(w * 0.04),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: h * 0.015,
-                      crossAxisSpacing: w * 0.03,
-                      childAspectRatio: 0.7,
-                    ),
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      final product = products[index];
-                      final isInCart = cartIds.contains(product.id);
-                      final isInWishlist = wishlistIds.contains(product.id);
-
-                      // ✅ Auto check if out of stock
-                      final bool isOutOfStock = (product.quantity ?? 0) <= 0;
-
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (_) => ProductDetailPage(product: product),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(w * 0.01),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // ✅ Product Image with "Out of Stock" overlay
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(w * 0.01),
-                                child: Stack(
-                                  children: [
-                                    product.image.startsWith('http')
-                                        ? Image.network(
-                                          product.image,
-                                          height: h * 0.2,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          color:
-                                              isOutOfStock
-                                                  ? Colors.black.withOpacity(
-                                                    0.5,
-                                                  )
-                                                  : null,
-                                          colorBlendMode:
-                                              isOutOfStock
-                                                  ? BlendMode.darken
-                                                  : BlendMode.srcIn,
-                                        )
-                                        : Image.file(
-                                          File(product.image),
-                                          height: h * 0.2,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          color:
-                                              isOutOfStock
-                                                  ? Colors.black.withOpacity(
-                                                    0.5,
-                                                  )
-                                                  : null,
-                                          colorBlendMode:
-                                              isOutOfStock
-                                                  ? BlendMode.darken
-                                                  : BlendMode.srcIn,
-                                        ),
-                                    if (isOutOfStock)
-                                      Positioned(
-                                        top: 8,
-                                        right: 8,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.redAccent.withOpacity(
-                                              0.9,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            "Out of Stock",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: h * 0.01),
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: w * 0.02,
-                                ),
-                                child: Text(
-                                  product.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: w * 0.045,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: w * 0.02,
-                                ),
-                                child: Text(
-                                  "₪${product.price.toStringAsFixed(2)}",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: w * 0.04,
-                                    color: Colors.deepOrange,
-                                  ),
-                                ),
-                              ),
-
-                              // ✅ Cart + Wishlist buttons
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: w * 0.02,
-                                  vertical: 4,
-                                ),
-                                child: Row(
-                                  children: [
-                                    // CART BUTTON
-                                    IconButton(
-                                      iconSize: w * 0.06,
-                                      icon: Icon(
-                                        Icons.shopping_bag,
-                                        color:
-                                            isInCart
-                                                ? Colors.deepOrange
-                                                : Colors.black,
-                                      ),
-                                      onPressed:
-                                          isOutOfStock
-                                              ? () {
-                                                Flushbar(
-                                                  message:
-                                                      "This product is currently out of stock.",
-                                                  backgroundColor:
-                                                      Colors.redAccent,
-                                                  duration: const Duration(
-                                                    seconds: 2,
-                                                  ),
-                                                  margin: const EdgeInsets.all(
-                                                    8,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  flushbarPosition:
-                                                      FlushbarPosition.TOP,
-                                                ).show(context);
-                                              }
-                                              : () {
-                                                final outerContext = context;
-
-                                                showModalBottomSheet(
-                                                  context: outerContext,
-                                                  isScrollControlled: true,
-                                                  shape: const RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.vertical(
-                                                          top: Radius.circular(
-                                                            20,
-                                                          ),
-                                                        ),
-                                                  ),
-                                                  builder: (modalContext) {
-                                                    int? selectedSize;
-                                                    Color? selectedColor;
-
-                                                    double w =
-                                                        MediaQuery.of(
-                                                          modalContext,
-                                                        ).size.width;
-                                                    double h =
-                                                        MediaQuery.of(
-                                                          modalContext,
-                                                        ).size.height;
-
-                                                    return StatefulBuilder(
-                                                      builder: (
-                                                        context,
-                                                        setModalState,
-                                                      ) {
-                                                        return Padding(
-                                                          padding: EdgeInsets.only(
-                                                            left: w * 0.05,
-                                                            right: w * 0.05,
-                                                            top: h * 0.02,
-                                                            bottom:
-                                                                MediaQuery.of(
-                                                                      modalContext,
-                                                                    )
-                                                                    .viewInsets
-                                                                    .bottom +
-                                                                h * 0.03,
-                                                          ),
-                                                          child: SingleChildScrollView(
-                                                            child: Column(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                Center(
-                                                                  child: Text(
-                                                                    "Choose Size & Color",
-                                                                    style: TextStyle(
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .bold,
-                                                                      fontSize:
-                                                                          w *
-                                                                          0.05,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                SizedBox(
-                                                                  height:
-                                                                      h * 0.02,
-                                                                ),
-                                                                Text(
-                                                                  "Size:",
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                    fontSize:
-                                                                        w *
-                                                                        0.04,
-                                                                  ),
-                                                                ),
-                                                                SizedBox(
-                                                                  height:
-                                                                      h * 0.01,
-                                                                ),
-                                                                Wrap(
-                                                                  spacing:
-                                                                      w * 0.02,
-                                                                  runSpacing:
-                                                                      h * 0.01,
-                                                                  children:
-                                                                      (product.sizes ??
-                                                                              [])
-                                                                          .map((
-                                                                            size,
-                                                                          ) {
-                                                                            return ChoiceChip(
-                                                                              label: Text(
-                                                                                size.toString(),
-                                                                                style: TextStyle(
-                                                                                  fontSize:
-                                                                                      w *
-                                                                                      0.035,
-                                                                                ),
-                                                                              ),
-                                                                              selected:
-                                                                                  selectedSize ==
-                                                                                  size,
-                                                                              onSelected:
-                                                                                  (
-                                                                                    _,
-                                                                                  ) => setModalState(
-                                                                                    () =>
-                                                                                        selectedSize =
-                                                                                            size,
-                                                                                  ),
-                                                                              selectedColor: Colors.deepOrange.withOpacity(
-                                                                                0.8,
-                                                                              ),
-                                                                            );
-                                                                          })
-                                                                          .toList(),
-                                                                ),
-                                                                SizedBox(
-                                                                  height:
-                                                                      h * 0.025,
-                                                                ),
-                                                                Text(
-                                                                  "Color:",
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                    fontSize:
-                                                                        w *
-                                                                        0.04,
-                                                                  ),
-                                                                ),
-                                                                SizedBox(
-                                                                  height:
-                                                                      h * 0.01,
-                                                                ),
-                                                                Wrap(
-                                                                  spacing:
-                                                                      w * 0.03,
-                                                                  runSpacing:
-                                                                      h * 0.01,
-                                                                  children:
-                                                                      (product.colors ??
-                                                                              [])
-                                                                          .map((
-                                                                            color,
-                                                                          ) {
-                                                                            return GestureDetector(
-                                                                              onTap:
-                                                                                  () => setModalState(
-                                                                                    () =>
-                                                                                        selectedColor =
-                                                                                            color,
-                                                                                  ),
-                                                                              child: Container(
-                                                                                decoration: BoxDecoration(
-                                                                                  shape:
-                                                                                      BoxShape.circle,
-                                                                                  border: Border.all(
-                                                                                    color:
-                                                                                        selectedColor ==
-                                                                                                color
-                                                                                            ? Colors.deepOrange
-                                                                                            : Colors.grey,
-                                                                                    width:
-                                                                                        w *
-                                                                                        0.007,
-                                                                                  ),
-                                                                                ),
-                                                                                child: CircleAvatar(
-                                                                                  backgroundColor:
-                                                                                      color,
-                                                                                  radius:
-                                                                                      w *
-                                                                                      0.045,
-                                                                                ),
-                                                                              ),
-                                                                            );
-                                                                          })
-                                                                          .toList(),
-                                                                ),
-                                                                SizedBox(
-                                                                  height:
-                                                                      h * 0.04,
-                                                                ),
-                                                                SizedBox(
-                                                                  width:
-                                                                      double
-                                                                          .infinity,
-                                                                  height:
-                                                                      h * 0.06,
-                                                                  child: ElevatedButton.icon(
-                                                                    style: ElevatedButton.styleFrom(
-                                                                      backgroundColor:
-                                                                          Colors
-                                                                              .deepOrange,
-                                                                      shape: RoundedRectangleBorder(
-                                                                        borderRadius: BorderRadius.circular(
-                                                                          w *
-                                                                              0.03,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    icon: Icon(
-                                                                      Icons
-                                                                          .shopping_cart_outlined,
-                                                                      color:
-                                                                          Colors
-                                                                              .white,
-                                                                      size:
-                                                                          w *
-                                                                          0.06,
-                                                                    ),
-                                                                    label: Text(
-                                                                      "Add to Cart",
-                                                                      style: TextStyle(
-                                                                        color:
-                                                                            Colors.white,
-                                                                        fontSize:
-                                                                            w *
-                                                                            0.04,
-                                                                        fontWeight:
-                                                                            FontWeight.w600,
-                                                                      ),
-                                                                    ),
-                                                                    onPressed: () async {
-                                                                      if (selectedSize ==
-                                                                              null ||
-                                                                          selectedColor ==
-                                                                              null) {
-                                                                        Flushbar(
-                                                                          message:
-                                                                              "Please choose size and color before adding.",
-                                                                          backgroundColor:
-                                                                              Colors.redAccent,
-                                                                          duration: const Duration(
-                                                                            seconds:
-                                                                                2,
-                                                                          ),
-                                                                          margin:
-                                                                              const EdgeInsets.all(
-                                                                                8,
-                                                                              ),
-                                                                          borderRadius: BorderRadius.circular(
-                                                                            12,
-                                                                          ),
-                                                                          flushbarPosition:
-                                                                              FlushbarPosition.TOP,
-                                                                        ).show(
-                                                                          outerContext,
-                                                                        );
-                                                                        return;
-                                                                      }
-
-                                                                      await FirestoreService.addOrUpdateCart(
-                                                                        product,
-                                                                        size:
-                                                                            selectedSize!,
-                                                                        color:
-                                                                            selectedColor!,
-                                                                      );
-
-                                                                      Navigator.pop(
-                                                                        modalContext,
-                                                                      );
-
-                                                                      Flushbar(
-                                                                        message:
-                                                                            "Product added to cart!",
-                                                                        backgroundColor:
-                                                                            Colors.green,
-                                                                        duration: const Duration(
-                                                                          seconds:
-                                                                              2,
-                                                                        ),
-                                                                        margin:
-                                                                            const EdgeInsets.all(
-                                                                              8,
-                                                                            ),
-                                                                        borderRadius:
-                                                                            BorderRadius.circular(
-                                                                              12,
-                                                                            ),
-                                                                        flushbarPosition:
-                                                                            FlushbarPosition.TOP,
-                                                                        icon: const Icon(
-                                                                          Icons
-                                                                              .check,
-                                                                          color:
-                                                                              Colors.white,
-                                                                        ),
-                                                                      ).show(
-                                                                        outerContext,
-                                                                      );
-                                                                    },
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        );
-                                                      },
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                    ),
-
-                                    SizedBox(width: w * 0.04),
-
-                                    // WISHLIST BUTTON
-                                    Expanded(
-                                      flex: 1,
-                                      child: IconButton(
-                                        iconSize: w * 0.06,
-                                        icon: Icon(
-                                          isInWishlist
-                                              ? Icons.favorite
-                                              : Icons
-                                                  .favorite_border, // 👈 Border when false
-                                          color:
-                                              isInWishlist
-                                                  ? const Color.fromARGB(
-                                                    255,
-                                                    255,
-                                                    17,
-                                                    0,
-                                                  )
-                                                  : Colors
-                                                      .black, // 👈 Red when pressed
-                                        ),
-                                        onPressed: () async {
-                                          if (isInWishlist) {
-                                            await FirestoreService.removeFromWishlist(
-                                              product.id,
-                                            );
-                                          } else {
-                                            await FirestoreService.addToWishlist(
-                                              product,
-                                            );
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                  return ProductGrid(
+                    products: products,
+                    cartIds: cartIds,
+                    wishlistIds: wishlistIds,
+                    w: w,
+                    h: h,
                   );
                 },
               );

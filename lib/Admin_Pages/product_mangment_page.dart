@@ -1551,132 +1551,188 @@ class _VariantCardState extends State<VariantCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// Color row
             Row(
               children: [
                 Container(
-                  width: 24,
-                  height: 24,
-                  color: Color(
-                    int.parse(widget.color.replaceFirst('#', '0xff')),
+                  width: 0.06 * w,
+                  height: 0.06 * w,
+                  decoration: BoxDecoration(
+                    color: Color(
+                      int.parse(widget.color.replaceFirst('#', '0xff')),
+                    ),
+                    borderRadius: BorderRadius.circular(0.02 * w),
                   ),
                 ),
-
-                SizedBox(width: 8),
+                SizedBox(width: 0.02 * w),
                 Text(
                   widget.color,
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 0.04 * w,
+                  ),
                 ),
                 Spacer(),
                 IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
+                  icon: Icon(Icons.delete, color: Colors.red, size: 0.06 * w),
                   onPressed: widget.onDelete,
                 ),
               ],
             ),
+
+            SizedBox(height: 0.02 * h),
+
+            /// Sizes & Quantities
             Column(
               children: [
                 for (var entry in widget.sizesMap.entries)
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 60,
-                        child: TextFormField(
-                          initialValue: entry.key,
-                          decoration: InputDecoration(labelText: 'Size'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (val) {
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 0.015 * h),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 0.15 * w,
+                          child: TextFormField(
+                            initialValue: entry.key,
+                            decoration: InputDecoration(
+                              labelText: 'Size',
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 0.015 * h,
+                                horizontal: 0.02 * w,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(0.02 * w),
+                              ),
+                            ),
+                            keyboardType: TextInputType.text,
+                            style: TextStyle(fontSize: 0.035 * w),
+                            onChanged: (val) {
+                              final newSizes = Map<String, int>.from(
+                                widget.sizesMap,
+                              );
+                              final qty = newSizes[entry.key]!;
+                              newSizes.remove(entry.key);
+                              newSizes[val] = qty;
+                              if (!mounted) return;
+                              widget.onUpdate(newSizes);
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 0.02 * w),
+                        SizedBox(
+                          width: 0.2 * w,
+                          child: TextFormField(
+                            initialValue: entry.value.toString(),
+                            decoration: InputDecoration(
+                              labelText: 'Qty',
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 0.015 * h,
+                                horizontal: 0.02 * w,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(0.02 * w),
+                              ),
+                            ),
+                            keyboardType: TextInputType.number,
+                            style: TextStyle(fontSize: 0.035 * w),
+                            onChanged: (val) {
+                              final newSizes = Map<String, int>.from(
+                                widget.sizesMap,
+                              );
+                              newSizes[entry.key] = int.tryParse(val) ?? 0;
+                              widget.onUpdate(newSizes);
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 0.02 * w),
+                        IconButton(
+                          icon: Icon(
+                            Icons.remove_circle,
+                            color: Colors.red,
+                            size: 0.06 * w,
+                          ),
+                          onPressed: () {
                             final newSizes = Map<String, int>.from(
                               widget.sizesMap,
                             );
-                            final qty = newSizes[entry.key]!;
                             newSizes.remove(entry.key);
-                            newSizes[val] = qty;
-                            if (!mounted) return; // ✅ add this
                             widget.onUpdate(newSizes);
                           },
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      SizedBox(
-                        width: 80,
-                        child: TextFormField(
-                          initialValue: entry.value.toString(),
-                          decoration: InputDecoration(labelText: 'Qty'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (val) {
-                            final newSizes = Map<String, int>.from(
-                              widget.sizesMap,
-                            );
-                            newSizes[entry.key] = int.tryParse(val) ?? 0;
-                            widget.onUpdate(newSizes);
-                          },
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.remove_circle, color: Colors.red),
-                        onPressed: () {
-                          final newSizes = Map<String, int>.from(
-                            widget.sizesMap,
-                          );
-                          newSizes.remove(entry.key);
-                          widget.onUpdate(newSizes);
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final sizeController = TextEditingController();
-                    final qtyController = TextEditingController();
-                    await showDialog(
-                      context: context,
-                      builder:
-                          (_) => AlertDialog(
-                            title: Text('Add Size & Quantity'),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TextField(
-                                  controller: sizeController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Size',
+
+                SizedBox(height: 0.02 * h),
+
+                /// Add new size button
+                SizedBox(
+                  width: double.infinity,
+                  height: 0.065 * h,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final sizeController = TextEditingController();
+                      final qtyController = TextEditingController();
+                      await showDialog(
+                        context: context,
+                        builder:
+                            (_) => AlertDialog(
+                              title: Text('Add Size & Quantity'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                    controller: sizeController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Size',
+                                    ),
                                   ),
+                                  SizedBox(height: 0.015 * h),
+                                  TextField(
+                                    controller: qtyController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Quantity',
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text('Cancel'),
                                 ),
-                                TextField(
-                                  controller: qtyController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Quantity',
-                                  ),
-                                  keyboardType: TextInputType.number,
+                                ElevatedButton(
+                                  onPressed: () {
+                                    if (sizeController.text.isNotEmpty) {
+                                      final newSizes = Map<String, int>.from(
+                                        widget.sizesMap,
+                                      );
+                                      newSizes[sizeController.text] =
+                                          int.tryParse(qtyController.text) ?? 0;
+                                      widget.onUpdate(newSizes);
+                                    }
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text('Add'),
                                 ),
                               ],
                             ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text('Cancel'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (sizeController.text.isNotEmpty) {
-                                    final newSizes = Map<String, int>.from(
-                                      widget.sizesMap,
-                                    );
-                                    newSizes[sizeController.text] =
-                                        int.tryParse(qtyController.text) ?? 0;
-                                    widget.onUpdate(newSizes);
-                                  }
-                                  Navigator.pop(context);
-                                },
-                                child: Text('Add'),
-                              ),
-                            ],
-                          ),
-                    );
-                  },
-                  icon: Icon(Icons.add),
-                  label: Text('Add Size'),
+                      );
+                    },
+                    icon: Icon(Icons.add, size: 0.06 * w),
+                    label: Text(
+                      'Add Size',
+                      style: TextStyle(fontSize: 0.04 * w),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(0.02 * w),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

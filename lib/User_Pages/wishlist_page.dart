@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../firestore_service.dart';
@@ -7,6 +9,13 @@ class WishlistPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mediaWidth = MediaQuery.of(context).size.width;
+    final mediaHeight = MediaQuery.of(context).size.height;
+
+    double fontSize(double size) => size * mediaWidth / 375;
+    double verticalSpace(double size) => size * mediaHeight / 812;
+    double horizontalSpace(double size) => size * mediaWidth / 375;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: StreamBuilder<QuerySnapshot>(
@@ -17,10 +26,10 @@ class WishlistPage extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
                 "Your wishlist is empty ❤️",
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                style: TextStyle(fontSize: fontSize(16), color: Colors.black54),
               ),
             );
           }
@@ -30,18 +39,18 @@ class WishlistPage extends StatelessWidget {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalSpace(16),
+                  vertical: verticalSpace(4),
                 ),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "${items.length} items",
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: fontSize(16),
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D141C),
+                      color: const Color(0xFF0D141C),
                     ),
                   ),
                 ),
@@ -50,41 +59,66 @@ class WishlistPage extends StatelessWidget {
                 child: ListView.separated(
                   itemCount: items.length,
                   separatorBuilder:
-                      (_, __) =>
-                          const Divider(height: 1, color: Color(0xFFE7EDF4)),
+                      (_, __) => Divider(
+                        height: verticalSpace(1),
+                        color: const Color(0xFFE7EDF4),
+                      ),
                   itemBuilder: (context, index) {
                     final item = items[index].data() as Map<String, dynamic>;
                     return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: horizontalSpace(16),
+                        vertical: verticalSpace(8),
                       ),
                       leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          item["image"] ?? "",
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                        ),
+                        borderRadius: BorderRadius.circular(horizontalSpace(8)),
+                        child:
+                            item["image"] != null
+                                ? item["image"].startsWith('http')
+                                    ? Image.network(
+                                      item["image"],
+                                      width: horizontalSpace(56),
+                                      height: verticalSpace(56),
+                                      fit: BoxFit.cover,
+                                    )
+                                    : Image.file(
+                                      File(item["image"]),
+                                      width: horizontalSpace(56),
+                                      height: verticalSpace(56),
+                                      fit: BoxFit.cover,
+                                    )
+                                : Container(
+                                  width: horizontalSpace(56),
+                                  height: verticalSpace(56),
+                                  color: Colors.grey.shade200,
+                                  child: Icon(
+                                    Icons.image,
+                                    color: Colors.grey,
+                                    size: fontSize(28),
+                                  ),
+                                ),
                       ),
                       title: Text(
                         item["name"] ?? "",
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: fontSize(16),
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF0D141C),
+                          color: const Color(0xFF0D141C),
                         ),
                       ),
                       subtitle: Text(
                         "₪${(item["price"] ?? 0).toString()}",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF49709C),
+                        style: TextStyle(
+                          fontSize: fontSize(14),
+                          color: const Color(0xFF49709C),
                         ),
                       ),
                       trailing: IconButton(
-                        icon: const Icon(Icons.favorite, color: Colors.red),
+                        icon: Icon(
+                          Icons.favorite,
+                          color: Colors.red,
+                          size: fontSize(24),
+                        ),
                         onPressed: () async {
                           await FirestoreService.removeFromWishlist(item["id"]);
                         },
