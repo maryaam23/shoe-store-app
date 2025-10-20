@@ -34,6 +34,25 @@ class _HomePageState extends State<HomePage> {
     "My Profile",
   ];
 
+
+void logUserEntry() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+
+    await userRef.update({
+      'lastEnteredAt': FieldValue.serverTimestamp(), // 🕒 track last open time
+    });
+
+    // Optional: log every entry in a subcollection
+    await userRef.collection('entries').add({
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
   final TextEditingController searchController = TextEditingController();
@@ -64,6 +83,8 @@ class _HomePageState extends State<HomePage> {
     searchController.addListener(() {
       setState(() {});
     });
+
+    logUserEntry();
   }
 
   @override
@@ -408,18 +429,21 @@ class _HomePageState extends State<HomePage> {
                               ),
                             );
 
-                       final matchesColors =
-    p.variants != null &&
-    p.variants!.keys.any((c) {
-      final hex = c.toLowerCase(); // already a hex string like "#f436ee"
-      final nameMatch = colorNames.entries.any(
-        (entry) =>
-            entry.key.contains(searchText) &&
-            entry.value == _colorFromHex(c), // convert string to Color
-      );
-      return hex.contains(searchText) || nameMatch;
-    });
-
+                        final matchesColors =
+                            p.variants != null &&
+                            p.variants!.keys.any((c) {
+                              final hex =
+                                  c.toLowerCase(); // already a hex string like "#f436ee"
+                              final nameMatch = colorNames.entries.any(
+                                (entry) =>
+                                    entry.key.contains(searchText) &&
+                                    entry.value ==
+                                        _colorFromHex(
+                                          c,
+                                        ), // convert string to Color
+                              );
+                              return hex.contains(searchText) || nameMatch;
+                            });
 
                         return matchesName ||
                             matchesCategory ||
@@ -461,11 +485,11 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  Color _colorFromHex(String hex) {
-  final buffer = StringBuffer();
-  if (hex.length == 6 || hex.length == 7) buffer.write('ff');
-  buffer.write(hex.replaceFirst('#', ''));
-  return Color(int.parse(buffer.toString(), radix: 16));
-}
 
+  Color _colorFromHex(String hex) {
+    final buffer = StringBuffer();
+    if (hex.length == 6 || hex.length == 7) buffer.write('ff');
+    buffer.write(hex.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
+  }
 }
