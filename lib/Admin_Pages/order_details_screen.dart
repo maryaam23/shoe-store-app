@@ -20,6 +20,14 @@ class OrderDetailsScreen extends StatefulWidget {
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   late Map<String, dynamic> orderData;
 
+  // 🔹 Responsive size helpers
+  double h(BuildContext context, double value) =>
+      MediaQuery.of(context).size.height * (value / 812); // base height (iPhone 11 Pro)
+  double w(BuildContext context, double value) =>
+      MediaQuery.of(context).size.width * (value / 375); // base width
+  double sp(BuildContext context, double value) =>
+      MediaQuery.of(context).textScaler.scale(value);
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +43,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         .update({'status': 'Delivered'});
 
     setState(() {
-      orderData['status'] = 'Delivered'; // ✅ instantly updates UI
+      orderData['status'] = 'Delivered';
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -45,82 +53,130 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final items = orderData['items'] ?? [];
     final status = orderData['status'] ?? 'Processing';
-    final double spacing = size.height * 0.02;
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Order #${orderData['orderNumber'] ?? widget.orderId}'),
+        backgroundColor: Colors.grey[50],
+        elevation: 0,
+        title: Text(
+          'Order #${orderData['orderNumber'] ?? widget.orderId}',
+          style: TextStyle(
+            fontSize: sp(context, 18),
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(w(context, 16)),
         child: ListView(
           children: [
+            // 🔹 Customer Info
             Text(
               'Customer: ${orderData['customer']}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: sp(context, 16),
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          const SizedBox(height: 4),
-            
-              Text(
-                'Phone: ${orderData['phone']}',
-                style: const TextStyle(fontSize: 14),
-              ),
-            
-              Text(
-                'Address: ${orderData['city']}',
-                style: const TextStyle(fontSize: 14),
-              ),
-            const SizedBox(height: 8),
-            Text('Status: $status'),
-            Text('Total: \$${orderData['total']}'),
-            Text('Payment: ${orderData['paymentMethod']}'),
-            Text('Date: ${orderData['orderDate']?.toDate().toString() ?? ''}'),
+            SizedBox(height: h(context, 4)),
+            Text(
+              'Phone: ${orderData['phone']}',
+              style: TextStyle(fontSize: sp(context, 14)),
+            ),
+            Text(
+              'Address: ${orderData['city']}',
+              style: TextStyle(fontSize: sp(context, 14)),
+            ),
+            SizedBox(height: h(context, 8)),
 
-            const SizedBox(height: 16),
-            const Divider(),
-            const Text(
+            // 🔹 Order Info
+            Text('Status: $status', style: TextStyle(fontSize: sp(context, 14))),
+            Text('Total: \$${orderData['total']}',
+                style: TextStyle(fontSize: sp(context, 14))),
+            Text('Payment: ${orderData['paymentMethod']}',
+                style: TextStyle(fontSize: sp(context, 14))),
+            Text(
+              'Date: ${orderData['orderDate']?.toDate().toString() ?? ''}',
+              style: TextStyle(fontSize: sp(context, 13)),
+            ),
+
+            SizedBox(height: h(context, 16)),
+            Divider(thickness: 1.2),
+            Text(
               'Items:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: sp(context, 18),
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: h(context, 8)),
 
+            // 🔹 Items List
             ...items.map<Widget>((item) {
               final colorValue = item['color'];
               final itemColor =
                   colorValue is int ? Color(colorValue) : Colors.grey;
 
               return Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: ListTile(
-                  leading: Image.network(
-                    item['image'],
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                  ),
-                  title: Text(item['name'] ?? 'Unknown'),
-                  subtitle: Column(
+                margin: EdgeInsets.symmetric(vertical: h(context, 6)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(w(context, 12)),
+                ),
+                elevation: 2,
+                child: Padding(
+                  padding: EdgeInsets.all(w(context, 8)),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Price: \$${item['price']}'),
-                      Text('Size: ${item['size']}'),
-                      Text('Quantity: ${item['quantity']}'),
-                      Row(
-                        children: [
-                          const Text('Color: '),
-                          Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: itemColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.black12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(w(context, 8)),
+                        child: Image.network(
+                          item['image'],
+                          width: w(context, 64),
+                          height: w(context, 64),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      SizedBox(width: w(context, 12)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item['name'] ?? 'Unknown',
+                                style: TextStyle(
+                                  fontSize: sp(context, 15),
+                                  fontWeight: FontWeight.bold,
+                                )),
+                            SizedBox(height: h(context, 4)),
+                            Text('Price: \$${item['price']}',
+                                style: TextStyle(fontSize: sp(context, 13))),
+                            Text('Size: ${item['size']}',
+                                style: TextStyle(fontSize: sp(context, 13))),
+                            Text('Quantity: ${item['quantity']}',
+                                style: TextStyle(fontSize: sp(context, 13))),
+                            SizedBox(height: h(context, 4)),
+                            Row(
+                              children: [
+                                Text('Color: ',
+                                    style: TextStyle(fontSize: sp(context, 13))),
+                                Container(
+                                  width: w(context, 18),
+                                  height: w(context, 18),
+                                  decoration: BoxDecoration(
+                                    color: itemColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.black26),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -128,27 +184,36 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               );
             }).toList(),
 
-            const SizedBox(height: 24),
+            SizedBox(height: h(context, 24)),
 
+            // 🔹 Action button or delivered message
             if (status != 'Delivered')
               ElevatedButton.icon(
                 onPressed: markAsDelivered,
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Mark as Delivered'),
+                icon: Icon(Icons.check_circle_outline, size: w(context, 18)),
+                label: Text(
+                  'Mark as Delivered',
+                  style: TextStyle(fontSize: sp(context, 15)),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: h(context, 14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(w(context, 12)),
+                  ),
                 ),
               )
             else
-              const Center(
+              Center(
                 child: Text(
                   'This order is already delivered ✅',
                   style: TextStyle(
                     color: Colors.green,
                     fontWeight: FontWeight.bold,
+                    fontSize: sp(context, 15),
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ),
           ],

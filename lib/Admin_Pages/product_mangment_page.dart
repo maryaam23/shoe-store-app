@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -865,6 +867,36 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     if (widget.productId != null) _loadProduct();
   }
 
+  Future<Map<String, dynamic>?> uploadToCloudinary(File file) async {
+    try {
+      const cloudName = 'dnrssrevb'; // your Cloudinary cloud name
+      const uploadPreset = 'flutter_unsigned'; // your unsigned preset
+
+      final uploadUrl = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+      );
+
+      final request =
+          http.MultipartRequest('POST', uploadUrl)
+            ..fields['upload_preset'] = uploadPreset
+            ..files.add(await http.MultipartFile.fromPath('file', file.path));
+
+      final response = await request.send();
+      final resBody = await response.stream.bytesToString();
+      final data = json.decode(resBody);
+
+      if (response.statusCode == 200) {
+        return {'url': data['secure_url']};
+      } else {
+        debugPrint('❌ Cloudinary error: ${data['error']['message']}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Cloudinary upload exception: $e');
+      return null;
+    }
+  }
+
   // Fixed Add Color Dialog
   // Fixed Add Color Dialog with Color Picker Wheel
   Future<Map<String, dynamic>?> pickColorDialog(BuildContext context) async {
@@ -1031,57 +1063,55 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     setState(() => isLoading = false);
   }
 
-  Future<void> pickImage(BuildContext context) async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder:
-          (_) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera),
-                title: const Text("Camera"),
-                onTap: () => Navigator.pop(context, 'camera'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text("Gallery"),
-                onTap: () => Navigator.pop(context, 'gallery'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.drive_folder_upload),
-                title: const Text("Files"),
-                onTap: () => Navigator.pop(context, 'file'),
-              ),
-            ],
-          ),
-    );
-
-    if (choice == null) return;
-
-    if (choice == 'file') {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image);
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          pickedImage = File(result.files.single.path!);
-          productData['image'] = pickedImage!.path;
-          imageUrlController.text = pickedImage!.path;
-        });
-      }
-    } else {
+  Future<void> pickImageOnly() async {
+    try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+      final XFile? pickedXFile = await picker.pickImage(
+        source: ImageSource.gallery,
         maxWidth: 800,
         maxHeight: 800,
+        imageQuality: 80,
       );
-      if (image != null) {
-        setState(() {
-          pickedImage = File(image.path);
-          productData['image'] = pickedImage!.path;
-          imageUrlController.text = pickedImage!.path;
-        });
+
+      if (pickedXFile == null) return;
+
+      setState(() {
+        pickedImage = File(pickedXFile.path);
+        imageUrlController.text = ''; // clear URL if picking new image
+      });
+    } catch (e) {
+      debugPrint('Pick image error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> pickAndUploadImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedXFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+
+      if (pickedXFile == null) return null;
+
+      final file = File(pickedXFile.path);
+
+      // ✅ Upload to Cloudinary
+      final result = await uploadToCloudinary(file);
+
+      if (result != null && result['url'] != null) {
+        return {'url': result['url'], 'file': file};
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Cloudinary upload failed')),
+        );
+        return null;
       }
+    } catch (e) {
+      debugPrint('Upload error: $e');
+      return null;
     }
   }
 
@@ -1089,70 +1119,42 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    int totalQty = 0;
-    (productData['variants'] as Map<String, Map<String, int>>).forEach((
-      color,
-      sizes,
-    ) {
-      sizes.forEach((size, qty) {
-        totalQty += qty;
-      });
-    });
-    productData['inStock'] = totalQty > 0;
-
-    if (!mounted) return;
     setState(() => isLoading = true);
 
     try {
-      String? imageUrl;
-
-      // ✅ If user picked a new image from device
+      // Upload image if picked
       if (pickedImage != null) {
-        final storageRef = FirebaseStorage.instance.ref().child(
-          'product_images/${DateTime.now().millisecondsSinceEpoch}.jpg',
-        );
-
-        await storageRef.putFile(File(pickedImage!.path));
-        imageUrl = await storageRef.getDownloadURL();
+        final result = await uploadToCloudinary(pickedImage!);
+        if (result != null && result['url'] != null) {
+          productData['image'] = result['url'];
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ Cloudinary upload failed')),
+          );
+          setState(() => isLoading = false);
+          return;
+        }
+      } else if (imageUrlController.text.isNotEmpty) {
+        productData['image'] = imageUrlController.text.trim();
       }
-      // ✅ Else use the existing URL typed manually
-      else if (imageUrlController.text.trim().isNotEmpty) {
-        imageUrl = imageUrlController.text.trim();
-      }
-
-      productData['image'] = imageUrl ?? '';
 
       final collection = FirebaseFirestore.instance.collection('Nproducts');
-
       if (widget.productId == null) {
         await collection.add({...productData, 'createdAt': Timestamp.now()});
       } else {
         await collection.doc(widget.productId).update(productData);
       }
 
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.productId == null
-                ? "✅ Product added!"
-                : "✅ Product updated!",
-          ),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('✅ Product saved successfully!')),
       );
-
       Navigator.pop(context);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("❌ Failed to save product: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Failed: $e')));
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      setState(() => isLoading = false);
     }
   }
 
@@ -1264,7 +1266,10 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
                           /// 🖼️ Image Picker
                           Center(
                             child: GestureDetector(
-                              onTap: () => pickImage(context),
+                              onTap: () async {
+                                await pickImageOnly();
+                              },
+
                               child: Container(
                                 width: double.infinity,
                                 height: 0.25 * h,
