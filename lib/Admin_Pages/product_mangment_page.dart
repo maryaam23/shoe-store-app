@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class ProductManagementScreen extends StatefulWidget {
   const ProductManagementScreen({super.key});
@@ -1099,36 +1100,60 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
     });
     productData['inStock'] = totalQty > 0;
 
-    productData['image'] =
-        pickedImage != null
-            ? pickedImage!.path
-            : imageUrlController.text.trim();
-
     if (!mounted) return;
     setState(() => isLoading = true);
 
-    final collection = FirebaseFirestore.instance.collection('Nproducts');
+    try {
+      String? imageUrl;
 
-    if (widget.productId == null) {
-      await collection.add({...productData, 'createdAt': Timestamp.now()});
-    } else {
-      await collection.doc(widget.productId).update(productData);
-    }
+      // ✅ If user picked a new image from device
+      if (pickedImage != null) {
+        final storageRef = FirebaseStorage.instance.ref().child(
+          'product_images/${DateTime.now().millisecondsSinceEpoch}.jpg',
+        );
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          widget.productId == null ? "Product added!" : "Product updated!",
+        await storageRef.putFile(File(pickedImage!.path));
+        imageUrl = await storageRef.getDownloadURL();
+      }
+      // ✅ Else use the existing URL typed manually
+      else if (imageUrlController.text.trim().isNotEmpty) {
+        imageUrl = imageUrlController.text.trim();
+      }
+
+      productData['image'] = imageUrl ?? '';
+
+      final collection = FirebaseFirestore.instance.collection('Nproducts');
+
+      if (widget.productId == null) {
+        await collection.add({...productData, 'createdAt': Timestamp.now()});
+      } else {
+        await collection.doc(widget.productId).update(productData);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.productId == null
+                ? "✅ Product added!"
+                : "✅ Product updated!",
+          ),
+          backgroundColor: Colors.green,
         ),
-      ),
-    );
+      );
 
-    if (!mounted) return;
-    Navigator.pop(context);
-
-    if (!mounted) return;
-    setState(() => isLoading = false);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Failed to save product: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   Widget buildTextField(

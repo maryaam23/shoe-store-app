@@ -34,7 +34,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Initialize secondary app
       final FirebaseApp secondaryApp = await Firebase.initializeApp(
         name: 'Secondary',
         options: Firebase.app().options,
@@ -42,18 +41,14 @@ class _AddAdminPageState extends State<AddAdminPage> {
 
       final auth = FirebaseAuth.instanceFor(app: secondaryApp);
 
-      // Create new admin user
       UserCredential userCred = await auth.createUserWithEmailAndPassword(
         email: _controllerEmail.text.trim(),
         password: _controllerPassword.text.trim(),
       );
 
       User newUser = userCred.user!;
-
-      // Send email verification
       await newUser.sendEmailVerification();
 
-      // Add user info to Firestore immediately
       await FirebaseFirestore.instance
           .collection('users')
           .doc(newUser.uid)
@@ -64,7 +59,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
             "createdAt": FieldValue.serverTimestamp(),
           });
 
-      // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -73,16 +67,12 @@ class _AddAdminPageState extends State<AddAdminPage> {
         );
       }
 
-      // Clear the text fields
       _controllerEmail.clear();
       _controllerPassword.clear();
       _nameController.clear();
 
-      // Sign out secondary app
       await auth.signOut();
       await secondaryApp.delete();
-
-      // Do NOT navigate or pop, stay on page
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -94,14 +84,15 @@ class _AddAdminPageState extends State<AddAdminPage> {
     }
   }
 
+  // Helper functions for responsive sizing
+  double w(BuildContext context, double fraction) =>
+      MediaQuery.of(context).size.width * fraction;
+  double h(BuildContext context, double fraction) =>
+      MediaQuery.of(context).size.height * fraction;
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final double buttonHeight = size.height * 0.05;
-    final double buttonFontSize = size.width * 0.035;
-    final double inputFontSize = size.width * 0.045;
-    final double spacing = size.height * 0.02;
-    final double logoSize = size.width * 0.2;
 
     return Scaffold(
       appBar: AppBar(
@@ -109,9 +100,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // no leading here → back arrow appears automatically
       ),
-
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -125,13 +114,12 @@ class _AddAdminPageState extends State<AddAdminPage> {
             end: Alignment.bottomRight,
           ),
         ),
-
         child: Container(
-          width: size.width * 0.92,
+          width: w(context, 0.92),
           height: double.infinity,
-          margin: EdgeInsets.all(size.width * 0.04),
+          margin: EdgeInsets.all(w(context, 0.04)),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(size.width * 0.06),
+            borderRadius: BorderRadius.circular(w(context, 0.06)),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black26,
@@ -141,42 +129,42 @@ class _AddAdminPageState extends State<AddAdminPage> {
             ],
             color: Colors.white,
           ),
-          padding: EdgeInsets.all(size.width * 0.05),
+          padding: EdgeInsets.all(w(context, 0.05)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Title and logo row
+              // Title and logo
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     "Add Another Admin",
                     style: TextStyle(
-                      fontSize: size.width * 0.065,
+                      fontSize: w(context, 0.065),
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
-
+                  SizedBox(width: w(context, 0.02)),
                   Image.asset(
                     "assets/logoImage.png",
-                    width: logoSize,
-                    height: logoSize,
+                    width: w(context, 0.15),
+                    height: w(context, 0.15),
                   ),
                 ],
               ),
-              SizedBox(height: spacing / 2),
+              SizedBox(height: h(context, 0.02)),
 
               _waitingForVerification
                   ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
+                    children: [
+                      const CircularProgressIndicator(),
+                      SizedBox(height: h(context, 0.02)),
                       Text(
                         "Waiting for the new admin to verify their email...",
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: w(context, 0.04)),
                       ),
                     ],
                   )
@@ -184,68 +172,62 @@ class _AddAdminPageState extends State<AddAdminPage> {
                     key: _formKey,
                     child: Column(
                       children: [
-                        // Full Name field
+                        // Full Name
                         TextFormField(
                           controller: _nameController,
-                          style: TextStyle(fontSize: inputFontSize),
+                          style: TextStyle(fontSize: w(context, 0.045)),
                           decoration: InputDecoration(
                             labelText: "Full Name",
                             prefixIcon: Icon(
                               Icons.badge_outlined,
-                              size: inputFontSize * 1.2,
+                              size: w(context, 0.06),
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                size.width * 0.04,
+                                w(context, 0.04),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                size.width * 0.04,
+                                w(context, 0.04),
                               ),
-                              borderSide: const BorderSide(
-                                color: Color.fromARGB(255, 1, 1, 1),
-                              ),
+                              borderSide: const BorderSide(color: Colors.black),
                             ),
                           ),
-                          textInputAction: TextInputAction.next,
-                          validator: (String? value) {
+                          validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Please enter full name.";
                             }
                             return null;
                           },
                         ),
-                        SizedBox(height: spacing),
-                        // Username field
+                        SizedBox(height: h(context, 0.02)),
+
+                        // Email
                         TextFormField(
                           controller: _controllerEmail,
-                          style: TextStyle(fontSize: inputFontSize),
+                          style: TextStyle(fontSize: w(context, 0.045)),
                           decoration: InputDecoration(
                             labelText: "Username",
                             prefixIcon: Icon(
                               Icons.person_outline,
-                              size: inputFontSize * 1.2,
+                              size: w(context, 0.06),
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                size.width * 0.04,
+                                w(context, 0.04),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                size.width * 0.04,
+                                w(context, 0.04),
                               ),
-                              borderSide: const BorderSide(
-                                color: Color.fromARGB(255, 1, 1, 1),
-                              ),
+                              borderSide: const BorderSide(color: Colors.black),
                             ),
                           ),
                           onEditingComplete:
-                              () =>
-                                  _focusNodePassword
-                                      .requestFocus(), // Move focus to password field when done
-                          validator: (String? value) {
+                              () => _focusNodePassword.requestFocus(),
+                          validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Please enter email.";
                             } else if (!RegExp(
@@ -253,31 +235,29 @@ class _AddAdminPageState extends State<AddAdminPage> {
                             ).hasMatch(value)) {
                               return "Enter a valid email.";
                             }
-
                             return null;
                           },
                         ),
-                        SizedBox(height: spacing),
-                        // Password field
+                        SizedBox(height: h(context, 0.02)),
+
+                        // Password
                         TextFormField(
                           controller: _controllerPassword,
                           focusNode: _focusNodePassword,
                           obscureText: _obscurePassword,
-                          style: TextStyle(fontSize: inputFontSize),
+                          style: TextStyle(fontSize: w(context, 0.045)),
                           decoration: InputDecoration(
                             labelText: "Password",
                             prefixIcon: Icon(
                               Icons.lock_outline,
-                              size: inputFontSize * 1.2,
+                              size: w(context, 0.06),
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
-                                    ? Icons
-                                        .visibility_off_outlined // closed eye when password hidden
-                                    : Icons
-                                        .visibility_outlined, // open eye when password visible
-                                size: inputFontSize * 1.2,
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: w(context, 0.06),
                               ),
                               onPressed: () {
                                 setState(
@@ -287,54 +267,46 @@ class _AddAdminPageState extends State<AddAdminPage> {
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                size.width * 0.04,
+                                w(context, 0.04),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
-                                size.width * 0.04,
+                                w(context, 0.04),
                               ),
-                              borderSide: const BorderSide(
-                                color: Color.fromARGB(255, 0, 0, 0),
-                              ),
+                              borderSide: const BorderSide(color: Colors.black),
                             ),
                           ),
-                          validator: (String? value) {
+                          validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Please enter password.";
                             }
-                            return null; // No manual password check needed
+                            return null;
                           },
                         ),
-                        SizedBox(height: spacing),
+                        SizedBox(height: h(context, 0.03)),
 
                         // Add Admin button
                         SizedBox(
-                          height: buttonHeight,
-                          width: 170, // adjust width as needed
+                          width: w(context, 0.6),
+                          height: h(context, 0.06),
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromARGB(
-                                255,
-                                0,
-                                0,
-                                0,
-                              ),
+                              backgroundColor: Colors.black,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
-                                  size.width * 0.05,
+                                  w(context, 0.05),
                                 ),
                               ),
-                              shadowColor: const Color.fromARGB(255, 0, 0, 0),
                               elevation: 5,
                             ),
                             onPressed: _isLoading ? null : _addAdmin,
                             child:
                                 _isLoading
-                                    ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
+                                    ? SizedBox(
+                                      width: w(context, 0.05),
+                                      height: w(context, 0.05),
+                                      child: const CircularProgressIndicator(
                                         color: Colors.white,
                                         strokeWidth: 2,
                                       ),
@@ -342,7 +314,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
                                     : Text(
                                       "Add Admin",
                                       style: TextStyle(
-                                        fontSize: buttonFontSize,
+                                        fontSize: w(context, 0.04),
                                         color: Colors.white,
                                       ),
                                     ),

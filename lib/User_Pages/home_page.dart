@@ -34,6 +34,25 @@ class _HomePageState extends State<HomePage> {
     "My Profile",
   ];
 
+
+void logUserEntry() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+
+    await userRef.update({
+      'lastEnteredAt': FieldValue.serverTimestamp(), // 🕒 track last open time
+    });
+
+    // Optional: log every entry in a subcollection
+    await userRef.collection('entries').add({
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
   final TextEditingController searchController = TextEditingController();
@@ -64,25 +83,8 @@ class _HomePageState extends State<HomePage> {
     searchController.addListener(() {
       setState(() {});
     });
+
     logUserEntry();
-  }
-
-  void logUserEntry() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid);
-
-    await userRef.update({
-      'lastEnteredAt': FieldValue.serverTimestamp(), // 🕒 track last open time
-    });
-
-    // Optional: log every entry in a subcollection
-    await userRef.collection('entries').add({
-      'timestamp': FieldValue.serverTimestamp(),
-    });
   }
 
   @override
