@@ -62,7 +62,7 @@ class _SignupPageState extends State<SignupPage> {
     "Ramallah",
     "Nablus",
     "Hebron",
-    "Gaza",
+   
     "Jenin",
     "Tulkarm",
     "Bethlehem",

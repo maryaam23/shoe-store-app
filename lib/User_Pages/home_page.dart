@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -27,6 +28,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  Set<String> allColors = {}; // store unique colors
   final List<String> pageTitles = [
     "Sport Brands",
     "Cart Page",
@@ -34,8 +36,7 @@ class _HomePageState extends State<HomePage> {
     "My Profile",
   ];
 
-
-void logUserEntry() async {
+  void logUserEntry() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -59,6 +60,9 @@ void logUserEntry() async {
 
   late Stream<QuerySnapshot> cartStream;
   late Stream<QuerySnapshot> wishlistStream;
+  String? selectedColor; // null = "All" selected
+  String? selectedSize; // null = "All" sizes selected
+  Set<String> allSizes = {}; // to store unique sizes
 
   final Map<String, Color> colorNames = {
     "red": Colors.red,
@@ -85,6 +89,7 @@ void logUserEntry() async {
     });
 
     logUserEntry();
+    fetchAllColorsAndSizes(); // force rebuild // ✅ Fetch colors
   }
 
   @override
@@ -180,20 +185,36 @@ void logUserEntry() async {
                               ),
                               if (unreadCount > 0)
                                 Positioned(
-                                  right: w * 0.02,
-                                  top: h * 0.015,
+                                  right: w * 0.01,
+                                  top: h * 0.008,
                                   child: Container(
-                                    padding: EdgeInsets.all(w * 0.015),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal:
+                                          unreadCount > 9
+                                              ? w * 0.008
+                                              : w * 0.010,
+                                      vertical: w * 0.004,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.red,
-                                      shape: BoxShape.circle,
+                                      borderRadius: BorderRadius.circular(
+                                        w * 0.02,
+                                      ),
+                                    ),
+                                    constraints: BoxConstraints(
+                                      minWidth: w * 0.035,
+                                      minHeight: w * 0.035,
                                     ),
                                     child: Text(
-                                      unreadCount.toString(),
+                                      unreadCount > 99
+                                          ? "99+"
+                                          : unreadCount.toString(),
+                                      textAlign: TextAlign.center,
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: w * 0.035,
+                                        fontSize: w * 0.027, // smaller text
                                         fontWeight: FontWeight.bold,
+                                        height: 1.0,
                                       ),
                                     ),
                                   ),
@@ -263,27 +284,33 @@ void logUserEntry() async {
         children: [
           // 🔍 Search Bar
           Padding(
-            padding: EdgeInsets.all(w * 0.03),
+            padding: EdgeInsets.all(w * 0.02),
             child: SizedBox(
-              height: h * 0.08,
+              height: h * 0.05,
               child: TextField(
                 controller: searchController,
                 style: TextStyle(fontSize: w * 0.04),
                 decoration: InputDecoration(
-                  hintText: "Search by name, brand, category, size, color ...",
+                  hintText: "Search by name, brand, category",
                   hintStyle: TextStyle(fontSize: w * 0.035),
                   contentPadding: EdgeInsets.symmetric(
                     vertical: h * 0.015,
-                    horizontal: w * 0.03,
+                    horizontal: w * 0.05,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(w * 0.03),
                     borderSide: const BorderSide(color: Colors.pink),
                   ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: Colors.pink,
-                    size: w * 0.06,
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.only(
+                      left: w * 0.02,
+                      right: w * 0.01,
+                    ), // move right
+                    child: Icon(
+                      Icons.search,
+                      color: Colors.pink,
+                      size: w * 0.045, // smaller size
+                    ),
                   ),
                 ),
               ),
@@ -358,10 +385,235 @@ void logUserEntry() async {
             ),
 
           // 🟧 BrandsBar
-          const BrandsBar(),
+          BrandsBar(),
+          // Color Picker
+          SizedBox(
+            height: h * 0.03, // compact height
+            child: Row(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: w * 0.04, right: w * 0.02),
+                  child: Text(
+                    "Colors:",
+                    style: TextStyle(
+                      fontSize: w * 0.025,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child:
+                      allColors.isEmpty
+                          ? Center(child: CircularProgressIndicator())
+                          : ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              // Reset button
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    searchController.clear();
+                                    selectedColor = null;
+                                  });
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.only(right: w * 0.01),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: w * 0.015,
+                                    vertical: h * 0.008,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color.fromARGB(
+                                      168,
+                                      224,
+                                      224,
+                                      224,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      w * 0.08,
+                                    ),
+                                    border: Border.all(
+                                      color:
+                                          selectedColor == null
+                                              ? Colors.black
+                                              : Colors.black12,
+                                      width: selectedColor == null ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      "All",
+                                      style: TextStyle(
+                                        fontSize: w * 0.018,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // Color circles
+                              ...allColors.map((hex) {
+                                Color color;
+                                try {
+                                  color = _colorFromHex(hex);
+                                } catch (e) {
+                                  color = Colors.grey;
+                                }
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedColor = hex;
+                                    });
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.only(right: w * 0.01),
+                                    child: Container(
+                                      width: w * 0.03,
+                                      height: w * 0.03,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color:
+                                              selectedColor == hex
+                                                  ? Colors.black
+                                                  : Colors.black12,
+                                          width: selectedColor == hex ? 2 : 1,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                          ),
+                ),
+              ],
+            ),
+          ),
 
           SizedBox(height: h * 0.02),
+          // Sizes Picker
+          SizedBox(
+            height: h * 0.03, // same compact height
+            child: Row(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: w * 0.04, right: w * 0.02),
+                  child: Text(
+                    "Sizes:",
+                    style: TextStyle(
+                      fontSize: w * 0.025,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child:
+                      allSizes.isEmpty
+                          ? Center(child: CircularProgressIndicator())
+                          : ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              // Reset "All" button
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedSize = null;
+                                    searchController
+                                        .clear(); // optional, only clear size filter
+                                  });
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.only(right: w * 0.01),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: w * 0.015,
+                                    vertical: h * 0.008,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color.fromARGB(
+                                      168,
+                                      224,
+                                      224,
+                                      224,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      w * 0.08,
+                                    ),
+                                    border: Border.all(
+                                      color:
+                                          selectedSize == null
+                                              ? Colors.black
+                                              : Colors.black12,
+                                      width: selectedSize == null ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      "All",
+                                      style: TextStyle(
+                                        fontSize: w * 0.018,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
 
+                              // Size buttons
+                              ...allSizes.map((size) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedSize = size;
+                                    });
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.only(right: w * 0.01),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.015,
+                                      vertical: h * 0.008,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromARGB(
+                                        168,
+                                        224,
+                                        224,
+                                        224,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        w * 0.08,
+                                      ),
+                                      border: Border.all(
+                                        color:
+                                            selectedSize == size
+                                                ? Colors.black
+                                                : Colors.black12,
+                                        width: selectedSize == size ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        size,
+                                        style: TextStyle(
+                                          fontSize: w * 0.018,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                          ),
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: h * 0.02),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: w * 0.04),
             child: Text(
@@ -408,49 +660,55 @@ void logUserEntry() async {
                       .toLowerCase();
 
               final filtered =
-                  searchText.isEmpty
-                      ? products
-                      : products.where((p) {
-                        final matchesName = p.name.toLowerCase().contains(
-                          searchText,
-                        );
-                        final matchesCategory = p.category
-                            .toLowerCase()
-                            .contains(searchText);
-                        final matchesBrand =
-                            p.brand != null &&
-                            p.brand!.toLowerCase().contains(searchText);
+                  products.where((p) {
+                    final searchText =
+                        searchController.text.trim().toLowerCase();
 
-                        final matchesSizes =
-                            p.variants != null &&
-                            p.variants!.values.any(
-                              (sizeMap) => sizeMap.keys.any(
-                                (s) => s.toString().contains(searchText),
-                              ),
-                            );
+                    // 🔎 Search filter
+                    final matchesSearch =
+                        searchText.isEmpty ||
+                        p.name.toLowerCase().contains(searchText) ||
+                        p.category.toLowerCase().contains(searchText) ||
+                        (p.brand != null &&
+                            p.brand!.toLowerCase().contains(searchText));
 
-                        final matchesColors =
-                            p.variants != null &&
-                            p.variants!.keys.any((c) {
-                              final hex =
-                                  c.toLowerCase(); // already a hex string like "#f436ee"
-                              final nameMatch = colorNames.entries.any(
-                                (entry) =>
-                                    entry.key.contains(searchText) &&
-                                    entry.value ==
-                                        _colorFromHex(
-                                          c,
-                                        ), // convert string to Color
-                              );
-                              return hex.contains(searchText) || nameMatch;
-                            });
+                    // 🎨 Color + size filter
+                    bool matchesFilters = true;
 
-                        return matchesName ||
-                            matchesCategory ||
-                            matchesBrand ||
-                            matchesSizes ||
-                            matchesColors;
-                      }).toList();
+                    if (selectedColor != null && selectedSize != null) {
+                      // BOTH color and size selected: strict equality
+                      matchesFilters =
+                          p.variants != null &&
+                          p.variants!.keys.any(
+                            (colorKey) =>
+                                colorKey.toUpperCase() ==
+                                    selectedColor!.toUpperCase() &&
+                                p.variants![colorKey]!.keys.any(
+                                  (s) => s.toString() == selectedSize,
+                                ),
+                          );
+                    } else if (selectedColor != null) {
+                      // Only color selected: any size under that color counts
+                      matchesFilters =
+                          p.variants != null &&
+                          p.variants!.keys.any(
+                            (colorKey) =>
+                                colorKey.toLowerCase() ==
+                                selectedColor!.toLowerCase(),
+                          );
+                    } else if (selectedSize != null) {
+                      // Only size selected: strict equality for size
+                      matchesFilters =
+                          p.variants != null &&
+                          p.variants!.values.any(
+                            (sizeMap) => sizeMap.keys.any(
+                              (s) => s.toString() == selectedSize,
+                            ),
+                          );
+                    }
+
+                    return matchesSearch && matchesFilters;
+                  }).toList();
 
               return StreamBuilder<QuerySnapshot>(
                 stream: wishlistStream,
@@ -487,9 +745,40 @@ void logUserEntry() async {
   }
 
   Color _colorFromHex(String hex) {
-    final buffer = StringBuffer();
-    if (hex.length == 6 || hex.length == 7) buffer.write('ff');
-    buffer.write(hex.replaceFirst('#', ''));
-    return Color(int.parse(buffer.toString(), radix: 16));
+    hex = hex.replaceAll('#', ''); // remove '#' if exists
+    if (hex.length == 6) hex = 'FF$hex'; // add alpha if missing
+    return Color(int.parse(hex, radix: 16));
+  }
+
+  Future<void> fetchAllColorsAndSizes() async {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('Nproducts')
+            .where('visible', isEqualTo: true)
+            .get();
+
+    Set<String> colors = {};
+    Set<String> sizes = {};
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      if (data['variants'] != null) {
+        final variants = Map<String, dynamic>.from(data['variants']);
+
+        // Colors
+        colors.addAll(variants.keys.map((k) => k.toUpperCase()));
+
+        // Sizes
+        for (var sizeMap in variants.values) {
+          final sizesMap = Map<String, dynamic>.from(sizeMap);
+          sizes.addAll(sizesMap.keys.map((s) => s.toString()));
+        }
+      }
+    }
+
+    setState(() {
+      allColors = SplayTreeSet<String>.from(colors); // automatically sorted
+      allSizes = SplayTreeSet<String>.from(sizes);
+    });
   }
 }

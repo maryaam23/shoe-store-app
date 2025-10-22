@@ -129,8 +129,15 @@ class _ProductPageState extends State<ProductPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("${widget.filterType}: ${widget.selectedFilterName}"),
-        backgroundColor: Colors.deepOrange,
+        title: Text(
+          " ${widget.selectedFilterName}",
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+
+        backgroundColor: const Color(0xFFF7F5F5),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream:

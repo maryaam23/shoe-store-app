@@ -28,7 +28,7 @@ class BrandsBar extends StatelessWidget {
     final h = MediaQuery.of(context).size.height;
 
     return SizedBox(
-      height: h * 0.18, // dynamic height (~18% of screen height)
+      height: h * 0.15, // dynamic height (~18% of screen height)
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: w * 0.04, vertical: h * 0.01),
@@ -59,8 +59,8 @@ class BrandsBar extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: SizedBox(
-                    width: w * 0.13, // responsive circle size
-                    height: w * 0.13,
+                    width: w * 0.11, // responsive circle size
+                    height: w * 0.11,
                     child: Image.asset(brand["image"]!, fit: BoxFit.contain),
                   ),
                 ),

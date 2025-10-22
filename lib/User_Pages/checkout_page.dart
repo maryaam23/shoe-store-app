@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -29,10 +31,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final TextEditingController cvvCtrl = TextEditingController();
   final TextEditingController phoneCtrl = TextEditingController();
   TextEditingController notesController = TextEditingController();
+  TextEditingController addressCtrl = TextEditingController();
 
   List<Map<String, dynamic>> addresses = [];
   List<Map<String, dynamic>> phones = [];
   String selectedPhone = "";
+  String? newAddressLabel;
+
+  bool currentLocationSelected = false;
 
   final List<Map<String, dynamic>> payments = [
     {"label": "Credit Card", "value": "Credit Card", "icon": Icons.credit_card},
@@ -352,7 +358,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 value: city,
                                 child: Text(
                                   city,
-                                  style: GoogleFonts.inter(fontSize: w * 0.04),
+                                  style: GoogleFonts.inter(
+                                    fontSize: w * 0.045,
+                                  ), // text size
                                 ),
                               ),
                             )
@@ -368,11 +376,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: w * 0.04,
-                        vertical: w * 0.03,
+                        vertical: h * 0.02, // increase vertical padding
                       ),
                     ),
+                    style: GoogleFonts.inter(
+                      fontSize: w * 0.045, // must match your dropdown text size
+                      color: Colors.black,
+                    ),
                   ),
+
+                  // State variable for the dynamic current location
                   _sectionTitle("Delivery Address", w, h),
+
+                  // Map existing addresses
                   ...addresses.map(
                     (addr) => RadioListTile(
                       value: addr["value"],
@@ -404,6 +420,111 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                     ),
                   ),
+
+                  // Add New Address dynamically
+                  if (!currentLocationSelected)
+                    RadioListTile(
+                      value: "new",
+                      groupValue: selectedAddress,
+                      onChanged: (val) async {
+                        setState(() {
+                          selectedAddress = val ?? "";
+                        });
+
+                        if (selectedAddress == "new" && user != null) {
+                          // Fetch current location and update in Firestore
+                          await _saveCurrentLocation(user!);
+                          final savedAddressDoc =
+                              await FirebaseFirestore.instance
+                                  .collection("users")
+                                  .doc(user!.uid)
+                                  .get();
+                          final savedAddr =
+                              savedAddressDoc.data()?['savedAddress'];
+
+                          if (savedAddr != null) {
+                            setState(() {
+                              newAddressLabel =
+                                  savedAddr['address'] ?? "Current Location";
+                              currentLocationSelected = true; // Mark as added
+                            });
+                          }
+                        }
+                      },
+                      title: Text(
+                        "Current Location",
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: w * 0.045,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "Press to get your current location",
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF49709C),
+                          fontSize: w * 0.035,
+                        ),
+                      ),
+                      secondary: CircleAvatar(
+                        backgroundColor: const Color(0xFFE7EDF4),
+                        radius: w * 0.07,
+                        child: Icon(
+                          Icons.add_location_alt,
+                          color: Colors.black,
+                          size: w * 0.06,
+                        ),
+                      ),
+                    ),
+
+                  // Show Current Location as a selected address with delete option
+                  if (currentLocationSelected)
+                    ListTile(
+                      title: Text(
+                        "Current Location",
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: w * 0.045,
+                        ),
+                      ),
+                      subtitle: Text(
+                        newAddressLabel ?? "Fetching...",
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF49709C),
+                          fontSize: w * 0.035,
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            currentLocationSelected = false;
+                            newAddressLabel = null;
+                            if (selectedAddress == "new") selectedAddress = "";
+                          });
+                        },
+                      ),
+                      onTap: () async {
+                        // Re-fetch new location each tap
+                        if (user != null) {
+                          await _saveCurrentLocation(user!);
+                          final savedAddressDoc =
+                              await FirebaseFirestore.instance
+                                  .collection("users")
+                                  .doc(user!.uid)
+                                  .get();
+                          final savedAddr =
+                              savedAddressDoc.data()?['savedAddress'];
+                          if (savedAddr != null) {
+                            setState(() {
+                              newAddressLabel =
+                                  savedAddr['address'] ?? "Current Location";
+                              selectedAddress = "new";
+                            });
+                          }
+                        }
+                      },
+                    ),
+
                   _sectionTitle("Phone Number", w, h),
                   ...phones.map((ph) {
                     final isNewPhone = ph["value"] == "new";
@@ -662,6 +783,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                 ),
                 onPressed: () async {
+                  // Validate all fields
+                  if (!_validateAllFields()) return;
+
                   if (phoneCtrl.text.trim().isEmpty) {
                     _showError("Please enter your phone number.");
                     return;
@@ -716,6 +840,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   final customerName =
                       userDoc.data()?['fullName'] ?? "Customer";
 
+                  // Resolve the actual address string
+                  String fullAddress = "";
+                  if (selectedAddress == "saved") {
+                    fullAddress =
+                        addresses.firstWhere(
+                          (a) => a["value"] == "saved",
+                        )["details"] ??
+                        "";
+                  } else if (selectedAddress.startsWith("addr_")) {
+                    fullAddress =
+                        addresses.firstWhere(
+                          (a) => a["value"] == selectedAddress,
+                        )["details"] ??
+                        "";
+                  } else if (selectedAddress == "new") {
+                    fullAddress = newAddressLabel ?? "";
+                  }
+
+                  // Now include it in orderData
                   final orderData = {
                     "orderNumber": orderNumber,
                     "orderDate": dateNow,
@@ -723,12 +866,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     "shipping": shipping,
                     "total": total,
                     "city": selectedCity,
-                    "address": selectedAddress,
+                    "address": fullAddress, // ✅ full address, not just value
                     "phone": phoneCtrl.text.trim(),
                     "paymentMethod": selectedPayment,
                     "notes": notesController.text,
-                    "userId": user!.uid, // 🔹 add userId
-                    "customer": customerName, // 🔹 add customer name
+                    "userId": user!.uid,
+                    "customer": customerName,
+                    // ✅ Add extra user info
+                    "email": userDoc.data()?['email'] ?? "",
+                    "dob": userDoc.data()?['dob'] ?? "",
+                    "gender": userDoc.data()?['gender'] ?? "",
                     "items":
                         cartDocs
                             .map(
@@ -743,6 +890,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                         : doc.id,
                                 "size": doc["size"] ?? "",
                                 "color": doc["color"]?.toString() ?? "#000000",
+                                // optional: also store per item if needed
                               },
                             )
                             .toList(),
@@ -776,12 +924,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                       if (!snapshot.exists) return;
 
-                     final variants = Map<String, dynamic>.from(snapshot["variants"] ?? {});
-
+                      final variants = Map<String, dynamic>.from(
+                        snapshot["variants"] ?? {},
+                      );
 
                       final colorKey = data["color"] ?? "#000000";
-final sizeKey = data["size"]?.toString() ?? "";
-
+                      final sizeKey = data["size"]?.toString() ?? "";
 
                       if (variants.containsKey(colorKey)) {
                         final colorMap = Map<String, dynamic>.from(
@@ -919,5 +1067,116 @@ final sizeKey = data["size"]?.toString() ?? "";
       hexColor = "FF$hexColor"; // add alpha if not provided
     }
     return Color(int.parse(hexColor, radix: 16));
+  }
+
+  Future<void> _saveCurrentLocation(User user) async {
+    try {
+      // Check permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        permission = await Geolocator.requestPermission();
+        if (permission != LocationPermission.whileInUse &&
+            permission != LocationPermission.always) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Location permission denied")),
+          );
+          return;
+        }
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Reverse geocode to address
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      String address = "";
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+        address =
+            "${place.name}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
+      }
+
+      // Save to Firestore
+      await FirebaseFirestore.instance.collection("users").doc(user.uid).update(
+        {
+          "savedAddress": {
+            "latitude": position.latitude,
+            "longitude": position.longitude,
+            "address": address,
+          },
+        },
+      );
+      print("DEBUG: Address saved: $address");
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Address saved: $address")));
+      setState(() {}); // refresh UI
+    } catch (e) {
+      debugPrint("Error getting location: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to get current location")),
+      );
+    }
+  }
+
+  bool _validateAllFields() {
+    // 1️⃣ City
+    if (selectedCity.isEmpty) {
+      _showError("Please select a delivery city.");
+      return false;
+    }
+
+    // 2️⃣ Address
+    if (selectedAddress.isEmpty) {
+      _showError("Please select a delivery address.");
+      return false;
+    }
+
+    // 3️⃣ Phone
+    if (phoneCtrl.text.trim().isEmpty) {
+      _showError("Please enter your phone number.");
+      return false;
+    }
+    if (!_isValidPhone(phoneCtrl.text.trim())) {
+      _showError("Phone number must start with 05 and be 10 digits.");
+      return false;
+    }
+
+    // 4️⃣ Payment
+    if (selectedPayment.isEmpty) {
+      _showError("Please select a payment method.");
+      return false;
+    }
+
+    if (_requiresPaymentDetails(selectedPayment)) {
+      if (nameCtrl.text.trim().isEmpty) {
+        _showError("Please enter the cardholder name.");
+        return false;
+      }
+      if (!_isValidCardNumber(cardNumberCtrl.text)) {
+        _showError("Invalid card number.");
+        return false;
+      }
+      if (!_isValidExpiry(expiryCtrl.text)) {
+        _showError("Invalid or expired date (MM/YY).");
+        return false;
+      }
+      if (!_isValidCVV(cvvCtrl.text)) {
+        _showError("Invalid CVV.");
+        return false;
+      }
+    }
+
+    // 5️⃣ Cart items
+    // (optional, since StreamBuilder already checks for empty cart)
+    return true; // everything is valid
   }
 }

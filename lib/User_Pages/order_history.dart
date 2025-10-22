@@ -165,7 +165,12 @@ class OrderHistoryPage extends StatelessWidget {
                                             width: w * 0.04,
                                             height: w * 0.04,
                                             decoration: BoxDecoration(
-                                              color: Color(item['color']),
+                                              color:
+                                                  item['color'] != null
+                                                      ? _hexToColor(
+                                                        item['color'],
+                                                      )
+                                                      : Colors.black,
                                               shape: BoxShape.circle,
                                               border: Border.all(
                                                 color: Colors.grey,
@@ -190,5 +195,12 @@ class OrderHistoryPage extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Color _hexToColor(String hexString) {
+    final buffer = StringBuffer();
+    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
+    buffer.write(hexString.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
   }
 }
