@@ -107,7 +107,7 @@ class OrderManagementScreen extends StatelessWidget {
                         SizedBox(height: h(context, 4)),
                         Text('Items: ${items.length}',
                             style: TextStyle(fontSize: sp(context, 13))),
-                        Text('Total: \$${total.toString()}',
+                        Text('Total: ₪${total.toString()}',
                             style: TextStyle(fontSize: sp(context, 13))),
                         SizedBox(height: h(context, 4)),
                         Row(

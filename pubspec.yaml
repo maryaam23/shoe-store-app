@@ -64,7 +64,9 @@ dependencies:
   intl: ^0.20.2
   colorfilter_generator: ^0.0.8
   flutter_colorpicker: ^1.1.0
-  firebase_app_check: ^0.4.0  
+  firebase_app_check: ^0.4.0
+  fl_chart: ^0.55.0 # charts 
+  printing: ^5.11.0  
   
   
   

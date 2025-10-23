@@ -22,7 +22,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   // 🔹 Responsive size helpers
   double h(BuildContext context, double value) =>
-      MediaQuery.of(context).size.height * (value / 812); // base height (iPhone 11 Pro)
+      MediaQuery.of(context).size.height *
+      (value / 812); // base height (iPhone 11 Pro)
   double w(BuildContext context, double value) =>
       MediaQuery.of(context).size.width * (value / 375); // base width
   double sp(BuildContext context, double value) =>
@@ -49,6 +50,15 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Order marked as Delivered ✅')),
     );
+  }
+
+  // Helper function to convert hex string like "#f44336" to Color
+  Color _colorFromHex(String hexColor) {
+    hexColor = hexColor.toUpperCase().replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add full opacity if missing
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 
   @override
@@ -89,17 +99,29 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               style: TextStyle(fontSize: sp(context, 14)),
             ),
             Text(
-              'Address: ${orderData['city']}',
+              'City: ${orderData['city']}',
+              style: TextStyle(fontSize: sp(context, 14)),
+            ),
+            SizedBox(height: h(context, 4)),
+            Text(
+              'Address: ${orderData['address']}',
               style: TextStyle(fontSize: sp(context, 14)),
             ),
             SizedBox(height: h(context, 8)),
 
             // 🔹 Order Info
-            Text('Status: $status', style: TextStyle(fontSize: sp(context, 14))),
-            Text('Total: \$${orderData['total']}',
-                style: TextStyle(fontSize: sp(context, 14))),
-            Text('Payment: ${orderData['paymentMethod']}',
-                style: TextStyle(fontSize: sp(context, 14))),
+            Text(
+              'Status: $status',
+              style: TextStyle(fontSize: sp(context, 14)),
+            ),
+            Text(
+              'Total: ₪${orderData['total']}',
+              style: TextStyle(fontSize: sp(context, 14)),
+            ),
+            Text(
+              'Payment: ${orderData['paymentMethod']}',
+              style: TextStyle(fontSize: sp(context, 14)),
+            ),
             Text(
               'Date: ${orderData['orderDate']?.toDate().toString() ?? ''}',
               style: TextStyle(fontSize: sp(context, 13)),
@@ -119,8 +141,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             // 🔹 Items List
             ...items.map<Widget>((item) {
               final colorValue = item['color'];
+
+              // Handle both hex strings and int color values
               final itemColor =
-                  colorValue is int ? Color(colorValue) : Colors.grey;
+                  colorValue is String
+                      ? _colorFromHex(colorValue)
+                      : (colorValue is int ? Color(colorValue) : Colors.grey);
 
               return Card(
                 margin: EdgeInsets.symmetric(vertical: h(context, 6)),
@@ -147,23 +173,33 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item['name'] ?? 'Unknown',
-                                style: TextStyle(
-                                  fontSize: sp(context, 15),
-                                  fontWeight: FontWeight.bold,
-                                )),
+                            Text(
+                              item['name'] ?? 'Unknown',
+                              style: TextStyle(
+                                fontSize: sp(context, 15),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             SizedBox(height: h(context, 4)),
-                            Text('Price: \$${item['price']}',
-                                style: TextStyle(fontSize: sp(context, 13))),
-                            Text('Size: ${item['size']}',
-                                style: TextStyle(fontSize: sp(context, 13))),
-                            Text('Quantity: ${item['quantity']}',
-                                style: TextStyle(fontSize: sp(context, 13))),
+                            Text(
+                              'Price: ₪${item['price']}',
+                              style: TextStyle(fontSize: sp(context, 13)),
+                            ),
+                            Text(
+                              'Size: ${item['size']}',
+                              style: TextStyle(fontSize: sp(context, 13)),
+                            ),
+                            Text(
+                              'Quantity: ${item['quantity']}',
+                              style: TextStyle(fontSize: sp(context, 13)),
+                            ),
                             SizedBox(height: h(context, 4)),
                             Row(
                               children: [
-                                Text('Color: ',
-                                    style: TextStyle(fontSize: sp(context, 13))),
+                                Text(
+                                  'Color: ',
+                                  style: TextStyle(fontSize: sp(context, 13)),
+                                ),
                                 Container(
                                   width: w(context, 18),
                                   height: w(context, 18),

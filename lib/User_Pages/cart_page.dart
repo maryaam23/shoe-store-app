@@ -141,17 +141,16 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
- Future<void> _updateColor(String cartId, String newColor) {
-  // normalize color to lowercase and match Nproducts key format
-  final normalizedColor = newColor.toLowerCase().substring(0, 7); // "#RRGGBB"
-  return FirebaseFirestore.instance
-      .collection("users")
-      .doc(user!.uid)
-      .collection("cart")
-      .doc(cartId)
-      .update({"color": normalizedColor});
-}
-
+  Future<void> _updateColor(String cartId, String newColor) {
+    // normalize color to lowercase and match Nproducts key format
+    final normalizedColor = newColor.toLowerCase().substring(0, 7); // "#RRGGBB"
+    return FirebaseFirestore.instance
+        .collection("users")
+        .doc(user!.uid)
+        .collection("cart")
+        .doc(cartId)
+        .update({"color": normalizedColor});
+  }
 
   Future<void> _updateSize(String cartId, int newSize) {
     return FirebaseFirestore.instance
@@ -344,6 +343,72 @@ class _CartPageState extends State<CartPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8FAFC),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            tooltip: "Clear Cart",
+            onPressed: () async {
+              if (user == null) return;
+
+              final cartRef = FirebaseFirestore.instance
+                  .collection("users")
+                  .doc(user!.uid)
+                  .collection("cart");
+
+              final cartSnapshot = await cartRef.get();
+
+              if (cartSnapshot.docs.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Cart is already empty."),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
+
+              // Confirm before deleting all
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text("Clear Cart"),
+                      content: const Text(
+                        "Are you sure you want to delete all items from your cart?",
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text("Yes, clear"),
+                        ),
+                      ],
+                    ),
+              );
+
+              if (confirm == true) {
+                // Delete all cart documents
+                for (var doc in cartSnapshot.docs) {
+                  await doc.reference.delete();
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Cart cleared successfully."),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
       body:
           user ==
                   null // to check if its guest
