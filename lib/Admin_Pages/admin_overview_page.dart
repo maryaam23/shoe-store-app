@@ -1,14 +1,22 @@
+import 'dart:collection';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shoe_store_app/Admin_Pages/admin_notification_screen.dart';
 import 'package:shoe_store_app/Admin_Pages/orders_mangment_page.dart';
 import 'package:shoe_store_app/Admin_Pages/product_mangment_page.dart';
-import 'package:shoe_store_app/Admin_Pages/users_mangment_page.dart';
 import 'package:shoe_store_app/Admin_Pages/admin_profile_page.dart';
-import 'package:shoe_store_app/User_Pages/login_page.dart'; // make sure you import LoginPage
+import 'package:shoe_store_app/User_Pages/brands_page.dart';
+import 'package:shoe_store_app/User_Pages/product_grid.dart';
+import 'package:shoe_store_app/firestore_service.dart';
+import 'package:shoe_store_app/User_Pages/product_page.dart'; // Product, ProductGrid
 
 void main() => runApp(AdminOverviewApp());
 
 class AdminOverviewApp extends StatelessWidget {
+  const AdminOverviewApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -19,23 +27,115 @@ class AdminOverviewApp extends StatelessWidget {
 }
 
 class AdminOverviewScreen extends StatefulWidget {
+  const AdminOverviewScreen({super.key});
+
   @override
   _AdminOverviewScreenState createState() => _AdminOverviewScreenState();
 }
 
 class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
   int _currentIndex = 0;
+  Set<String> allColors = {};
+  Set<String> allSizes = {};
+  String? selectedColor;
+  String? selectedSize;
 
-  // Pages for BottomNavigationBar
-  final List<Widget> _pages = [
-    AdminOverviewScreenBody(), // main overview content
-    OrderManagementScreen(),
-    ProductManagementScreen(),
-    AdminProfilePage(),
-  ];
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final user = FirebaseAuth.instance.currentUser;
+  final TextEditingController searchController = TextEditingController();
+
+  late Stream<QuerySnapshot> cartStream;
+  late Stream<QuerySnapshot> wishlistStream;
+  late Stream<QuerySnapshot> unreadNotificationsStream;
+
+  String currentUserRole = 'user'; // default
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserRole();
+    cartStream = FirestoreService.getCart();
+    wishlistStream = FirestoreService.getWishlist();
+
+    unreadNotificationsStream =
+        FirebaseFirestore.instance
+            .collection('admin_noti')
+            .where('isRead', isEqualTo: false)
+            .snapshots();
+
+    searchController.addListener(() {
+      setState(() {});
+    });
+
+    fetchAllColorsAndSizes();
+  }
+
+  Future<void> fetchUserRole() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+      if (doc.exists) {
+        setState(() {
+          currentUserRole = doc.data()?['role'] ?? 'user';
+        });
+      }
+    }
+  }
+
+  Future<void> fetchAllColorsAndSizes() async {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('Nproducts')
+            .where('visible', isEqualTo: true)
+            .get();
+
+    Set<String> colors = {};
+    Set<String> sizes = {};
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      if (data['variants'] != null) {
+        final variants = Map<String, dynamic>.from(data['variants']);
+        colors.addAll(variants.keys.map((k) => k.toUpperCase()));
+
+        for (var sizeMap in variants.values) {
+          final sizesMap = Map<String, dynamic>.from(sizeMap);
+          sizes.addAll(sizesMap.keys.map((s) => s.toString()));
+        }
+      }
+    }
+
+    setState(() {
+      allColors = SplayTreeSet<String>.from(colors);
+      allSizes = SplayTreeSet<String>.from(sizes);
+    });
+  }
+
+  Color _colorFromHex(String hex) {
+    hex = hex.replaceAll('#', '');
+    if (hex.length == 6) hex = 'FF$hex';
+    return Color(int.parse(hex, radix: 16));
+  }
+
+  final List<Widget> _pages = [];
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final h = MediaQuery.of(context).size.height;
+
+    // Initialize pages with proper buildHomeBody
+    final _pages = [
+      buildHomeBody(w, h),
+      OrderManagementScreen(),
+      ProductManagementScreen(),
+      AdminProfilePage(),
+    ];
+
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
@@ -43,12 +143,8 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
         unselectedItemColor: Colors.blueGrey,
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: [
+        onTap: (index) => setState(() => _currentIndex = index),
+        items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "Orders"),
           BottomNavigationBarItem(
@@ -60,314 +156,433 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
       ),
     );
   }
-}
 
-// Separated main overview content to allow bottom nav switching
-class AdminOverviewScreenBody extends StatelessWidget {
-  final List<Map<String, dynamic>> stats = [
-    {
-      "title": "Total Sales",
-      "value": "\$12,500",
-      "change": "+10%",
-      "color": Colors.green,
-    },
-    {
-      "title": "Orders Today",
-      "value": "75",
-      "change": "+5%",
-      "color": Colors.green,
-    },
-    {
-      "title": "Pending Orders",
-      "value": "5",
-      "change": "-2%",
-      "color": Colors.red,
-    },
-    {
-      "title": "Low-Stock Items",
-      "value": "12",
-      "change": "-1%",
-      "color": Colors.red,
-    },
-  ];
+  Widget buildHomeBody(double w, double h) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.pink.shade400,
+        title: const Text(
+          "Admin Overview",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        centerTitle: true,
+        elevation: 4,
+        actions: [
+          StreamBuilder<QuerySnapshot>(
+            stream: unreadNotificationsStream,
+            builder: (context, snapshot) {
+              int unreadCount = 0;
+              if (snapshot.hasData) {
+                unreadCount = snapshot.data!.docs.length;
+              }
 
-  final List<Map<String, dynamic>> lowStockProducts = [
-    {
-      "name": "Running Shoes",
-      "left": "10 units left",
-      "image": "https://example.com/image1.jpg",
-    },
-    {
-      "name": "Casual Sneakers",
-      "left": "5 units left",
-      "image": "https://example.com/image2.jpg",
-    },
-    {
-      "name": "Boots",
-      "left": "2 units left",
-      "image": "https://example.com/image3.jpg",
-    },
-  ];
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications, color: Colors.white),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminNotificationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
 
-  @override
-  Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final width = media.size.width;
-    final height = media.size.height;
-
-    double scaleWidth(double size) => size * width / 375; // base width
-    double scaleHeight(double size) => size * height / 812; // base height
-    double scaleText(double size) => size * width / 375;
-
-    return SafeArea(
-      child: ListView(
-        padding: EdgeInsets.all(scaleWidth(16)),
-        children: [
-          // Header
-          Row(
-            children: [
-              Icon(
-                Icons.arrow_back,
-                size: scaleWidth(28),
-                color: Colors.black87,
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    "Overview",
-                    style: TextStyle(
-                      fontSize: scaleText(20),
-                      fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Search bar
+            Padding(
+              padding: EdgeInsets.all(w * 0.02),
+              child: SizedBox(
+                height: h * 0.05,
+                child: TextField(
+                  controller: searchController,
+                  style: TextStyle(fontSize: w * 0.04),
+                  decoration: InputDecoration(
+                    hintText: "Search by name, brand, category",
+                    hintStyle: TextStyle(fontSize: w * 0.035),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: h * 0.015,
+                      horizontal: w * 0.05,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(w * 0.03),
+                      borderSide: const BorderSide(color: Colors.pink),
+                    ),
+                    prefixIcon: Padding(
+                      padding: EdgeInsets.only(left: w * 0.02, right: w * 0.01),
+                      child: Icon(
+                        Icons.search,
+                        color: Colors.pink,
+                        size: w * 0.045,
+                      ),
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: scaleWidth(28)),
-            ],
-          ),
-          SizedBox(height: scaleHeight(16)),
-          Text(
-            "Hi, Alex, here's today's store overview",
-            style: TextStyle(
-              fontSize: scaleText(22),
-              fontWeight: FontWeight.bold,
             ),
-          ),
-          SizedBox(height: scaleHeight(16)),
 
-          // Stats Grid
-          GridView.builder(
-            itemCount: stats.length,
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.5,
-              crossAxisSpacing: scaleWidth(12),
-              mainAxisSpacing: scaleHeight(12),
-            ),
-            itemBuilder: (context, index) {
-              final stat = stats[index];
-              return Container(
-                padding: EdgeInsets.all(scaleWidth(16)),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(scaleWidth(12)),
-                  color: Colors.white,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      stat['title'],
+            BrandsBar(),
+
+            // Color picker
+            SizedBox(
+              height: h * 0.03,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: w * 0.04, right: w * 0.02),
+                    child: Text(
+                      "Colors:",
                       style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: scaleText(16),
-                      ),
-                    ),
-                    SizedBox(height: scaleHeight(8)),
-                    Text(
-                      stat['value'],
-                      style: TextStyle(
+                        fontSize: w * 0.025,
                         fontWeight: FontWeight.bold,
-                        fontSize: scaleText(22),
                       ),
                     ),
-                    SizedBox(height: scaleHeight(4)),
-                    Text(
-                      stat['change'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: scaleText(14),
-                        color: stat['color'],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          SizedBox(height: scaleHeight(24)),
-
-          // Low Stock Alerts
-          Text(
-            "Low Stock Alerts",
-            style: TextStyle(
-              fontSize: scaleText(20),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: scaleHeight(12)),
-          Column(
-            children:
-                lowStockProducts
-                    .map(
-                      (product) => Container(
-                        margin: EdgeInsets.only(bottom: scaleHeight(12)),
-                        padding: EdgeInsets.all(scaleWidth(12)),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(scaleWidth(12)),
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                scaleWidth(8),
-                              ),
-                              child: Image.network(
-                                product['image'],
-                                width: scaleWidth(50),
-                                height: scaleWidth(50),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            SizedBox(width: scaleWidth(12)),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  Expanded(
+                    child:
+                        allColors.isEmpty
+                            ? Center(child: CircularProgressIndicator())
+                            : ListView(
+                              scrollDirection: Axis.horizontal,
                               children: [
-                                Text(
-                                  product['name'],
-                                  style: TextStyle(
-                                    fontSize: scaleText(16),
-                                    fontWeight: FontWeight.w500,
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      searchController.clear();
+                                      selectedColor = null;
+                                    });
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.only(right: w * 0.01),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.015,
+                                      vertical: h * 0.008,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromARGB(
+                                        168,
+                                        224,
+                                        224,
+                                        224,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        w * 0.08,
+                                      ),
+                                      border: Border.all(
+                                        color:
+                                            selectedColor == null
+                                                ? Colors.black
+                                                : Colors.black12,
+                                        width: selectedColor == null ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        "All",
+                                        style: TextStyle(
+                                          fontSize: w * 0.018,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                SizedBox(height: scaleHeight(4)),
-                                Text(
-                                  product['left'],
-                                  style: TextStyle(
-                                    fontSize: scaleText(14),
-                                    color: Colors.blueGrey,
+                                ...allColors.map((hex) {
+                                  Color color;
+                                  try {
+                                    color = _colorFromHex(hex);
+                                  } catch (e) {
+                                    color = Colors.grey;
+                                  }
+                                  return GestureDetector(
+                                    onTap:
+                                        () =>
+                                            setState(() => selectedColor = hex),
+                                    child: Container(
+                                      margin: EdgeInsets.only(right: w * 0.01),
+                                      width: w * 0.03,
+                                      height: w * 0.03,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color:
+                                              selectedColor == hex
+                                                  ? Colors.black
+                                                  : Colors.black12,
+                                          width: selectedColor == hex ? 2 : 1,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Size picker
+            SizedBox(
+              height: h * 0.03,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: w * 0.04, right: w * 0.02),
+                    child: Text(
+                      "Sizes:",
+                      style: TextStyle(
+                        fontSize: w * 0.025,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child:
+                        allSizes.isEmpty
+                            ? Center(child: CircularProgressIndicator())
+                            : ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                GestureDetector(
+                                  onTap:
+                                      () => setState(() => selectedSize = null),
+                                  child: Container(
+                                    margin: EdgeInsets.only(right: w * 0.01),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: w * 0.015,
+                                      vertical: h * 0.008,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromARGB(
+                                        168,
+                                        224,
+                                        224,
+                                        224,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        w * 0.08,
+                                      ),
+                                      border: Border.all(
+                                        color:
+                                            selectedSize == null
+                                                ? Colors.black
+                                                : Colors.black12,
+                                        width: selectedSize == null ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        "All",
+                                        style: TextStyle(
+                                          fontSize: w * 0.018,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                ...allSizes.map(
+                                  (size) => GestureDetector(
+                                    onTap:
+                                        () =>
+                                            setState(() => selectedSize = size),
+                                    child: Container(
+                                      margin: EdgeInsets.only(right: w * 0.01),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: w * 0.015,
+                                        vertical: h * 0.008,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromARGB(
+                                          168,
+                                          224,
+                                          224,
+                                          224,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          w * 0.08,
+                                        ),
+                                        border: Border.all(
+                                          color:
+                                              selectedSize == size
+                                                  ? Colors.black
+                                                  : Colors.black12,
+                                          width: selectedSize == size ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          size,
+                                          style: TextStyle(
+                                            fontSize: w * 0.018,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-          ),
-          SizedBox(height: scaleHeight(24)),
+                  ),
+                ],
+              ),
+            ),
 
-          // Buttons
-          Column(
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  navigateToPage(context, ProductManagementScreen());
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  minimumSize: Size(double.infinity, scaleHeight(45)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(scaleWidth(10)),
-                  ),
-                ),
-                child: Text(
-                  "Add Product",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleText(16),
-                  ),
+            SizedBox(height: h * 0.02),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: w * 0.04),
+              child: Text(
+                "Featured",
+                style: TextStyle(
+                  fontSize: w * 0.05,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: scaleHeight(12)),
-              OutlinedButton(
-                onPressed: () {
-                  navigateToPage(context, OrderManagementScreen());
-                },
-                style: OutlinedButton.styleFrom(
-                  minimumSize: Size(double.infinity, scaleHeight(45)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(scaleWidth(10)),
-                  ),
-                ),
-                child: Text(
-                  "View Orders",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleText(16),
-                  ),
-                ),
-              ),
-              SizedBox(height: scaleHeight(12)),
-              OutlinedButton(
-                onPressed: () {
-                  navigateToPage(context, UsersManagementPage());
-                },
-                style: OutlinedButton.styleFrom(
-                  minimumSize: Size(double.infinity, scaleHeight(45)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(scaleWidth(10)),
-                  ),
-                ),
-                child: Text(
-                  "Manage Users",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleText(16),
-                  ),
-                ),
-              ),
-              SizedBox(height: scaleHeight(12)),
+            ),
 
-              // LOGOUT BUTTON
-              ElevatedButton(
-                onPressed: () async {
-                  await FirebaseAuth.instance.signOut(); // 👈 actually sign out
-
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                    (route) => false,
+            // Firestore Products
+            StreamBuilder<QuerySnapshot>(
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('Nproducts')
+                      .where('visible', isEqualTo: true)
+                      .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: SizedBox(
+                      height: h * 0.05,
+                      width: h * 0.05,
+                      child: CircularProgressIndicator(),
+                    ),
                   );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  minimumSize: Size(double.infinity, scaleHeight(45)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(scaleWidth(10)),
-                  ),
-                ),
-                child: Text(
-                  "Logout",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: scaleText(16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: scaleHeight(24)),
-        ],
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "No products found.",
+                      style: TextStyle(fontSize: w * 0.04),
+                    ),
+                  );
+                }
+
+                final products =
+                    snapshot.data!.docs
+                        .map((doc) => Product.fromFirestore(doc))
+                        .toList();
+
+                final filtered =
+                    products.where((p) {
+                      final searchText =
+                          searchController.text.trim().toLowerCase();
+                      final matchesSearch =
+                          searchText.isEmpty ||
+                          p.name.toLowerCase().contains(searchText) ||
+                          p.category.toLowerCase().contains(searchText) ||
+                          (p.brand != null &&
+                              p.brand!.toLowerCase().contains(searchText));
+
+                      bool matchesFilters = true;
+
+                      if (selectedColor != null && selectedSize != null) {
+                        matchesFilters =
+                            p.variants != null &&
+                            p.variants!.keys.any(
+                              (colorKey) =>
+                                  colorKey.toUpperCase() ==
+                                      selectedColor!.toUpperCase() &&
+                                  p.variants![colorKey]!.keys.any(
+                                    (s) => s.toString() == selectedSize,
+                                  ),
+                            );
+                      } else if (selectedColor != null) {
+                        matchesFilters =
+                            p.variants != null &&
+                            p.variants!.keys.any(
+                              (colorKey) =>
+                                  colorKey.toLowerCase() ==
+                                  selectedColor!.toLowerCase(),
+                            );
+                      } else if (selectedSize != null) {
+                        matchesFilters =
+                            p.variants != null &&
+                            p.variants!.values.any(
+                              (sizeMap) => sizeMap.keys.any(
+                                (s) => s.toString() == selectedSize,
+                              ),
+                            );
+                      }
+
+                      return matchesSearch && matchesFilters;
+                    }).toList();
+
+                return StreamBuilder<QuerySnapshot>(
+                  stream: wishlistStream,
+                  builder: (context, wishlistSnap) {
+                    final wishlistIds =
+                        wishlistSnap.hasData
+                            ? wishlistSnap.data!.docs.map((d) => d.id).toSet()
+                            : <String>{};
+
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: cartStream,
+                      builder: (context, cartSnap) {
+                        final cartIds =
+                            cartSnap.hasData
+                                ? cartSnap.data!.docs.map((d) => d.id).toSet()
+                                : <String>{};
+
+                        return ProductGrid(
+                          products: filtered,
+                          cartIds: cartIds,
+                          wishlistIds: wishlistIds,
+                          w: w,
+                          h: h,
+                          role: currentUserRole, // <-- pass the role here
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  void navigateToPage(BuildContext context, Widget page) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
   }
 }

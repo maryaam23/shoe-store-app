@@ -111,6 +111,7 @@ class ProductPage extends StatefulWidget {
 class _ProductPageState extends State<ProductPage> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
+  String currentUserRole = 'user'; // default
 
   late Stream<QuerySnapshot> cartStream;
   late Stream<QuerySnapshot> wishlistStream;
@@ -120,6 +121,18 @@ class _ProductPageState extends State<ProductPage> {
     super.initState();
     cartStream = FirestoreService.getCart();
     wishlistStream = FirestoreService.getWishlist();
+    fetchUserRole();
+  }
+
+  Future<void> fetchUserRole() async {
+    if (user != null) {
+      final doc = await firestore.collection('users').doc(user!.uid).get();
+      if (doc.exists) {
+        setState(() {
+          currentUserRole = doc.data()?['role'] ?? 'user';
+        });
+      }
+    }
   }
 
   @override
@@ -197,6 +210,7 @@ class _ProductPageState extends State<ProductPage> {
                     wishlistIds: wishlistIds,
                     w: w,
                     h: h,
+                    role: currentUserRole, // <-- pass the role here
                   );
                 },
               );

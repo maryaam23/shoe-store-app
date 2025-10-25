@@ -18,6 +18,7 @@ class ProductGrid extends StatelessWidget {
   final Set<String> wishlistIds;
   final double w;
   final double h;
+  final String role; // <-- add role
 
   const ProductGrid({
     super.key,
@@ -26,6 +27,7 @@ class ProductGrid extends StatelessWidget {
     required this.wishlistIds,
     required this.w,
     required this.h,
+    required this.role, // <-- pass role
   });
 
   @override
@@ -193,15 +195,20 @@ class ProductGrid extends StatelessWidget {
                                     ? Color.fromARGB(255, 255, 17, 0)
                                     : Colors.black,
                           ),
-                          onPressed: () async {
-                            if (isInWishlist) {
-                              await FirestoreService.removeFromWishlist(
-                                product.id,
-                              );
-                            } else {
-                              await FirestoreService.addToWishlist(product);
-                            }
-                          },
+                          onPressed:
+                              role == 'admin'
+                                  ? null // Admin can't tap: disabled button
+                                  : () async {
+                                    if (isInWishlist) {
+                                      await FirestoreService.removeFromWishlist(
+                                        product.id,
+                                      );
+                                    } else {
+                                      await FirestoreService.addToWishlist(
+                                        product,
+                                      );
+                                    }
+                                  },
                         ),
                       ),
                     ],
@@ -451,47 +458,58 @@ class ProductGrid extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        onPressed: () async {
-                          final availableQty =
-                              selectedColorHex != null && selectedSize != null
-                                  ? product
-                                          .variants![selectedColorHex]![selectedSize] ??
-                                      0
-                                  : 0;
+                        onPressed:
+                            role == 'admin'
+                                ? null // Admin can't tap: disabled button
+                                : () async {
+                                  final availableQty =
+                                      selectedColorHex != null &&
+                                              selectedSize != null
+                                          ? product
+                                                  .variants![selectedColorHex]![selectedSize] ??
+                                              0
+                                          : 0;
 
-                          if (selectedColorHex == null ||
-                              selectedSize == null ||
-                              availableQty <= 0) {
-                            Flushbar(
-                              message:
-                                  "Please choose a valid size and color that are in stock.",
-                              backgroundColor: Colors.redAccent,
-                              duration: const Duration(seconds: 2),
-                              margin: EdgeInsets.all(w * 0.02),
-                              borderRadius: BorderRadius.circular(w * 0.02),
-                              flushbarPosition: FlushbarPosition.TOP,
-                            ).show(outerContext);
-                            return;
-                          }
+                                  if (selectedColorHex == null ||
+                                      selectedSize == null ||
+                                      availableQty <= 0) {
+                                    Flushbar(
+                                      message:
+                                          "Please choose a valid size and color that are in stock.",
+                                      backgroundColor: Colors.redAccent,
+                                      duration: const Duration(seconds: 2),
+                                      margin: EdgeInsets.all(w * 0.02),
+                                      borderRadius: BorderRadius.circular(
+                                        w * 0.02,
+                                      ),
+                                      flushbarPosition: FlushbarPosition.TOP,
+                                    ).show(outerContext);
+                                    return;
+                                  }
 
-                          await FirestoreService.addOrUpdateCart(
-                            product,
-                            size: int.tryParse(selectedSize!) ?? 0,
-                            color: _colorFromHex(selectedColorHex!),
-                          );
+                                  await FirestoreService.addOrUpdateCart(
+                                    product,
+                                    size: int.tryParse(selectedSize!) ?? 0,
+                                    color: _colorFromHex(selectedColorHex!),
+                                  );
 
-                          Navigator.pop(modalContext);
+                                  Navigator.pop(modalContext);
 
-                          Flushbar(
-                            message: "Product added to cart!",
-                            backgroundColor: Colors.green,
-                            duration: const Duration(seconds: 2),
-                            margin: EdgeInsets.all(w * 0.02),
-                            borderRadius: BorderRadius.circular(w * 0.02),
-                            flushbarPosition: FlushbarPosition.TOP,
-                            icon: const Icon(Icons.check, color: Colors.white),
-                          ).show(outerContext);
-                        },
+                                  Flushbar(
+                                    message: "Product added to cart!",
+                                    backgroundColor: Colors.green,
+                                    duration: const Duration(seconds: 2),
+                                    margin: EdgeInsets.all(w * 0.02),
+                                    borderRadius: BorderRadius.circular(
+                                      w * 0.02,
+                                    ),
+                                    flushbarPosition: FlushbarPosition.TOP,
+                                    icon: const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                    ),
+                                  ).show(outerContext);
+                                },
                       ),
                     ),
                   ],

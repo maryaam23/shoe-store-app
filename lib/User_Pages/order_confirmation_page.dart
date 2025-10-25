@@ -25,6 +25,26 @@ class OrderConfirmationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Fetch the order document for this order number
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('orders')
+          .where('orderNumber', isEqualTo: orderNumber)
+          .get()
+          .then((snapshot) {
+            if (snapshot.docs.isNotEmpty) {
+              final orderData = snapshot.docs.first.data();
+              // Send notification to admin
+              sendAdminOrderNotification(orderData);
+            }
+          })
+          .catchError((e) {
+            debugPrint("❌ Failed to fetch order for admin notification: $e");
+          });
+    }
     // Trigger notification when user reaches this page
     _sendOrderNotification(orderNumber, total);
 
@@ -173,6 +193,55 @@ class OrderConfirmationPage extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> sendAdminOrderNotification(Map<String, dynamic> orderData) async {
+  try {
+    final usersRef = FirebaseFirestore.instance.collection('users');
+    final adminNotiRef = FirebaseFirestore.instance.collection('admin_noti');
+
+    // Build the items description string
+    String itemsDescription = "";
+    for (var item in orderData['items']) {
+      itemsDescription +=
+          "- ${item['name']} x${item['quantity']} (Size ${item['size']}, Color ${item['color']})\n";
+    }
+
+    // Query all users with role == "admin" to check if there are admins
+    final adminSnapshot = await usersRef.where('role', isEqualTo: 'admin').get();
+
+    if (adminSnapshot.docs.isEmpty) {
+      debugPrint("⚠️ No admin users found to notify.");
+      return;
+    }
+
+    // Add the notification to the top-level admin_noti collection
+    await adminNotiRef.add({
+      "title": "🛒 New Order #${orderData['orderNumber']} Received",
+      "subtitle":
+          "Customer: ${orderData['customer']}\n"
+          "Phone: ${orderData['phone']}\n"
+          "Email: ${orderData['email']}\n"
+          "Address: ${orderData['address']}\n"
+          "Payment: ${orderData['paymentMethod']}\n"
+          "Total: ₪${orderData['total']}\n"
+          "Items:\n$itemsDescription"
+          "Order Date: ${orderData['orderDate'].toDate().day}/"
+          "${orderData['orderDate'].toDate().month}/"
+          "${orderData['orderDate'].toDate().year}",
+      "category": "new_order",
+      "isRead": false,
+      "createdAt": FieldValue.serverTimestamp(),
+      "image": orderData['items'][0]['image'], // first item image
+    });
+
+    debugPrint(
+      "✅ Admin notification saved in admin_noti for order ${orderData['orderNumber']}",
+    );
+  } catch (e) {
+    debugPrint("❌ Failed to notify admins: $e");
+  }
+}
+
 
   // ----------------- FIRESTORE NOTIFICATION -----------------
   Future<void> _sendOrderNotification(String orderNumber, double total) async {

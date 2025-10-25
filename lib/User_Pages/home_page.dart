@@ -54,6 +54,23 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  String currentUserRole = 'user'; // default
+  Future<void> fetchUserRole() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+      if (doc.exists) {
+        setState(() {
+          currentUserRole = doc.data()?['role'] ?? 'user';
+        });
+      }
+    }
+  }
+
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
   final TextEditingController searchController = TextEditingController();
@@ -64,23 +81,10 @@ class _HomePageState extends State<HomePage> {
   String? selectedSize; // null = "All" sizes selected
   Set<String> allSizes = {}; // to store unique sizes
 
-  final Map<String, Color> colorNames = {
-    "red": Colors.red,
-    "blue": Colors.blue,
-    "green": Colors.green,
-    "yellow": Colors.yellow,
-    "orange": Colors.orange,
-    "pink": Colors.pink,
-    "purple": Colors.purple,
-    "brown": Colors.brown,
-    "black": Colors.black,
-    "white": Colors.white,
-    "grey": Colors.grey,
-  };
-
   @override
   void initState() {
     super.initState();
+    fetchUserRole();
     cartStream = FirestoreService.getCart();
     wishlistStream = FirestoreService.getWishlist();
 
@@ -732,6 +736,7 @@ class _HomePageState extends State<HomePage> {
                         wishlistIds: wishlistIds,
                         w: w,
                         h: h,
+                        role: currentUserRole, // <-- pass the role here
                       );
                     },
                   );
